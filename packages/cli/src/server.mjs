@@ -139,6 +139,28 @@ export async function status(root) {
   };
 }
 
+/**
+ * Re-check citations every time the data is read.
+ *
+ * Artifacts written by an IDE agent never pass through this server, so they
+ * carry no verification state — which meant the trust badges only ever appeared
+ * for UI-generated output, i.e. not the common path. Checking on read also keeps
+ * the result honest as the code changes underneath, rather than freezing a
+ * verdict from whenever the file was written.
+ */
+async function verifyOnRead(root, data) {
+  const { verifyArtifact } = await import("@infraviz/schema/verify");
+  const out = { project: null, services: {} };
+  if (data.project) out.project = (await verifyArtifact(root, data.project)).artifact;
+  for (const [id, arts] of Object.entries(data.services ?? {})) {
+    out.services[id] = {};
+    for (const [kind, art] of Object.entries(arts)) {
+      out.services[id][kind] = art ? (await verifyArtifact(root, art)).artifact : null;
+    }
+  }
+  return out;
+}
+
 export async function startServer({ root, port, onReady }) {
   const jobs = new Map();
   const sse = new Set();
@@ -191,7 +213,7 @@ export async function startServer({ root, port, onReady }) {
 
     if (p === "/api/data") {
       const [data, progress] = await Promise.all([loadAll(root), loadProgress(root)]);
-      return json(res, 200, { ...data, progress });
+      return json(res, 200, { ...(await verifyOnRead(root, data)), progress });
     }
 
     if (p === "/api/consent") {

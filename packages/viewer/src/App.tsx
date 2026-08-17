@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import DiagramCard from "./components/DiagramCard";
+import OptimiseLens from "./components/OptimiseLens";
 import RequestPanel from "./components/RequestPanel";
 import SequenceDiagram from "./components/SequenceDiagram";
 import Sidebar from "./components/Sidebar";
@@ -137,6 +138,21 @@ export default function App() {
                   {sequence && <SequenceDiagram seq={sequence} />}
                   {topology && <DiagramCard topology={topology} optimise={art?.optimise ?? null} service={service!} />}
                 </ReactFlowProvider>
+              )}
+
+              {/* Optimisations normally live as a tab inside the topology card, but
+                  they can be generated on their own — in which case there is no
+                  card to host them and they would render nowhere. */}
+              {art?.optimise && !topology && (
+                <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5">
+                  <div className="flex items-baseline justify-between mb-3">
+                    <h2 className="text-[15px] font-bold">Optimisations</h2>
+                    <span className="text-[10.5px] font-mono text-[var(--ink-soft)]">
+                      generate the flow lenses to see these alongside the diagram
+                    </span>
+                  </div>
+                  <OptimiseLens data={art.optimise} service={service!} />
+                </div>
               )}
             </div>
           )}
