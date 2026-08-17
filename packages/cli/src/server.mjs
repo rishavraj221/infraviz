@@ -22,6 +22,24 @@ import { detectAll, PROVIDERS } from "./providers.mjs";
 export const DIR = ".infraviz";
 const KINDS = ["topology", "sequence", "optimise"];
 
+// Consent is recorded per repository, not globally: sensitivity is a property of
+// the codebase, so connecting a new repo asks again. Bump this when the terms
+// materially change, and prior acceptances stop counting.
+export const CONSENT_VERSION = 1;
+
+export async function getConsent(root) {
+  const f = join(root, DIR, "consent.json");
+  if (!existsSync(f)) return { accepted: false };
+  try {
+    const c = JSON.parse(await readFile(f, "utf8"));
+    return c.version === CONSENT_VERSION && c.accepted
+      ? { accepted: true, at: c.at }
+      : { accepted: false, staleVersion: c.version };
+  } catch {
+    return { accepted: false };
+  }
+}
+
 export async function loadAll(root) {
   const base = join(root, DIR);
   const project = existsSync(join(base, "project.json"))
@@ -44,9 +62,12 @@ export async function loadAll(root) {
 /** What's done and what's missing — the resume point for humans and agents alike. */
 export async function status(root) {
   const { project, services } = await loadAll(root);
-  if (!project) return { scanned: false, services: [] };
+  const consent = await getConsent(root);
+  if (!project) return { scanned: false, consent, root, services: [] };
   return {
     scanned: true,
+    consent,
+    root,
     name: project.name,
     generatedAt: project.generatedAt ?? null,
     services: (project.services ?? []).map((s) => {
@@ -112,6 +133,18 @@ export async function startServer({ root, port, onReady }) {
     const p = url.pathname;
 
     if (p === "/api/data") return json(res, 200, await loadAll(root));
+
+    if (p === "/api/consent") {
+      if (req.method === "POST") {
+        const body = await readBody(req);
+        if (!body.accepted) return json(res, 400, { error: "not accepted" });
+        await mkdir(join(root, DIR), { recursive: true });
+        const record = { version: CONSENT_VERSION, accepted: true, at: new Date().toISOString(), root };
+        await writeFile(join(root, DIR, "consent.json"), JSON.stringify(record, null, 2) + "\n");
+        return json(res, 200, { accepted: true, at: record.at });
+      }
+      return json(res, 200, await getConsent(root));
+    }
     if (p === "/api/status") return json(res, 200, await status(root));
     if (p === "/api/providers") return json(res, 200, await detectAll());
 
@@ -128,6 +161,12 @@ export async function startServer({ root, port, onReady }) {
       const { kind, serviceId, provider, model, effort } = await readBody(req);
       if (!["scan", "topology", "sequence", "optimise"].includes(kind)) {
         return json(res, 400, { error: "kind must be scan|topology|sequence|optimise" });
+      }
+      const consent = await getConsent(root);
+      if (!consent.accepted) {
+        return json(res, 403, {
+          error: "Not permitted yet — this repository has not been acknowledged for analysis.",
+        });
       }
       const detected = (await detectAll()).filter((d) => d.installed);
       if (!detected.length) {

@@ -14,7 +14,9 @@ No account. No app to install. No data leaves your machine.
 npx infraviz view
 ```
 
-Opens on an empty repo. From there you pick either path — **run it here** (if an
+Opens on an empty repo and first asks you to acknowledge how your data is
+handled — nothing reads your code until you do, and the local server enforces
+that, not just the page. From there you pick either path — **run it here** (if an
 agent CLI is on your PATH) or **copy a prompt for your IDE**. Both write the same
 files, so you can switch mid-way: scan from the UI, generate diagrams in Cursor,
 or the reverse.
@@ -137,6 +139,13 @@ every real one beside it.
 ## Security
 
 Read this before pointing it at a work codebase.
+
+### Consent comes first
+
+Connecting a repository shows a summary of how data is handled and requires an
+explicit acknowledgement before anything reads your code. It is recorded per
+repository in `.infraviz/consent.json`, so a different repo asks again, and the
+run endpoint returns `403` until it exists.
 
 ### What infraviz itself does
 

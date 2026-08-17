@@ -4,8 +4,12 @@ You are reading this because someone asked you to visualise their system
 architecture and pointed you at this repository. This file is the complete
 specification. **You do not need to clone or install this repo to do the work.**
 
-Your job: read their codebase, write JSON artifacts into `.infraviz/` in *their*
-repo, then tell them to run `npx infraviz view`.
+Your job: show them the viewer, get their consent, then read their codebase and
+write JSON artifacts into `.infraviz/` in *their* repo.
+
+**Start the viewer before you read anything.** See Step 0 below — it exists so the
+user sees something within seconds and agrees to the data handling before any of
+their code is sent anywhere.
 
 ---
 
@@ -33,12 +37,42 @@ with a one-line verdict and nothing else.
 ## Workflow
 
 ```
-1. Scan            → .infraviz/project.json     ← then STOP
-2. npx infraviz view                            ← user picks a service
-3. ONE service     → sequence.json, topology.json, optimise.json
+0. npx infraviz view       ← FIRST. Show the UI, get consent.
+1. Scan                    → .infraviz/project.json     ← then STOP
+2. user picks a service in the UI
+3. ONE service             → sequence.json, topology.json, optimise.json
 4. npx infraviz verify     (fix anything it reports, then re-verify)
 5. Repeat step 3 only for services the user names
 ```
+
+### Step 0 is not optional — do this before reading any code
+
+Run `npx infraviz view` and tell the user to open the URL it prints. The page
+opens on an empty repository and asks them to acknowledge how their data is
+handled. **Do not read, grep or scan their codebase before they have accepted.**
+
+Two reasons this matters:
+
+1. **Consent.** Analysing someone's repository sends parts of it to your
+   provider. They should see the terms and agree before that happens, not after.
+   The local server enforces this too — its run endpoint refuses until an
+   acceptance is recorded — so skipping step 0 simply produces a 403 on the UI
+   path.
+2. **Time to first result.** A full analysis takes many minutes. Showing the UI
+   in seconds tells the user it is working and lets them choose what to spend
+   time on, instead of waiting with nothing on screen.
+
+If you cannot run commands, state the disclaimer in chat yourself and ask the
+user to confirm before continuing:
+
+> Before I analyse this repository: infraviz runs entirely on your machine and
+> sends nothing to anyone — it writes results to `.infraviz/` in your repo. But I
+> generate those results, which means parts of your code go to my provider, just
+> as with any other request you make of me. The output also contains verbatim
+> code snippets and a list of weak points, so treat `.infraviz/` as confidential;
+> it is gitignored by default. Shall I go ahead?
+
+Wait for a clear yes. Then continue.
 
 **Stop after step 1 and report.** Do not continue into step 3 on your own.
 

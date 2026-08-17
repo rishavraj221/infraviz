@@ -6,12 +6,15 @@ import SequenceDiagram from "./components/SequenceDiagram";
 import Sidebar from "./components/Sidebar";
 import OverallView from "./components/OverallView";
 import StartScreen from "./components/StartScreen";
+import ConsentGate from "./components/ConsentGate";
 import { useVizStore } from "./store/useVizStore";
 import { applyJobEvent } from "./useRunner";
 import type { VizData } from "./types";
 
 export default function App() {
   const [data, setData] = useState<VizData | null>(null);
+  const [consent, setConsent] = useState<{ accepted: boolean } | null>(null);
+  const [repo, setRepo] = useState<string | undefined>();
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const activeService = useVizStore((s) => s.activeService);
@@ -28,6 +31,13 @@ export default function App() {
           setError(e.message);
           setLoaded(true);
         });
+    fetch("/api/status")
+      .then((r) => r.json())
+      .then((st) => {
+        setConsent(st.consent ?? { accepted: false });
+        setRepo(st.root);
+      })
+      .catch(() => setConsent({ accepted: false }));
     load();
 
     // Live sync. The server watches .infraviz/, so work done in your IDE lands
@@ -41,13 +51,17 @@ export default function App() {
     return () => es.close();
   }, []);
 
-  if (!loaded) {
+  if (!loaded || !consent) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-[13px] text-[var(--ink-soft)] font-mono">loading…</p>
       </div>
     );
   }
+
+  // Consent first, always. The server enforces the same gate, so this is not
+  // merely cosmetic — nothing reads the codebase until it is recorded.
+  if (!consent.accepted) return <ConsentGate repo={repo} onAccept={() => setConsent({ accepted: true })} />;
 
   // No project yet is a normal starting state, not an error — the UI is the
   // entry point, so offer both ways to begin from here.
