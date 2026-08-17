@@ -7,11 +7,35 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-    "./verify": { "types": "./dist/verify.d.ts", "default": "./dist/verify.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./verify": {
+      "types": "./dist/verify.d.ts",
+      "default": "./dist/verify.js"
+    }
   },
-  "files": ["dist"],
-  "scripts": { "build": "tsc -p tsconfig.json" },
-  "dependencies": { "zod": "^4.1.13" },
-  "devDependencies": { "typescript": "~6.0.2", "@types/node": "^24.13.3" }
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "@types/node": "^24.13.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rishavraj221/infraviz.git",
+    "directory": "packages/schema"
+  },
+  "homepage": "https://github.com/rishavraj221/infraviz",
+  "bugs": {
+    "url": "https://github.com/rishavraj221/infraviz/issues"
+  }
 }

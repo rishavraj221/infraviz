@@ -13,7 +13,7 @@ No account. No app to install. No data leaves your machine.
 In Cursor, Claude Code, Codex — anywhere with a coding agent:
 
 > Visualise the system design of this API. Follow the spec at
-> `github.com/<you>/infraviz` — run `npx infraviz spec` for the exact format.
+> `github.com/rishavraj221/infraviz` — run `npx infraviz spec` for the exact format.
 
 The agent reads your code, writes JSON into `.infraviz/`, and you run:
 
@@ -32,6 +32,24 @@ npx infraviz verify     # validate schemas and re-check every citation
 npx infraviz view       # render .infraviz/ in your browser
 npx infraviz init       # create .infraviz/
 ```
+
+### Running from a clone
+
+**Not yet published to npm**, so `npx infraviz` will not resolve until it is.
+Until then, run it from a clone:
+
+```bash
+git clone https://github.com/rishavraj221/infraviz && cd infraviz
+npm install && npm run build
+npm link -w infraviz          # puts `infraviz` on your PATH
+
+cd /path/to/your-api
+infraviz verify
+infraviz view
+```
+
+Everything in this README works the same way once linked — substitute `infraviz`
+for `npx infraviz`.
 
 ---
 
@@ -116,8 +134,11 @@ Not there yet, and deliberately not faked:
   hardcoded to one company's AWS bill. Doing them portably needs pricing and
   quota data in the schema — until then the lenses aren't offered rather than
   showing someone else's numbers.
-- **MCP server.** Planned next: it turns the validation loop into something the
-  agent self-corrects against, instead of relying on it to follow prose.
+- **MCP server.** Under consideration rather than planned. An agent with shell
+  access can already run `npx infraviz verify` and self-correct, so MCP's real
+  value is narrower than it first appears: discovery (the agent sees the tools
+  without being told the repo exists), reaching clients that have no shell, and
+  turning "please include a fingerprint" from a request into a hard rejection.
 - **Desktop app.** An Electron shell exists in prototype and isn't ported yet.
 
 ## Licence

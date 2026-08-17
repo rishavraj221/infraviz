@@ -6,7 +6,23 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
-  "scripts": { "build": "tsc -p tsconfig.json" },
-  "devDependencies": { "typescript": "~6.0.2", "@types/node": "^24.13.3" }
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "@types/node": "^24.13.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rishavraj221/infraviz.git",
+    "directory": "packages/spec"
+  },
+  "homepage": "https://github.com/rishavraj221/infraviz",
+  "bugs": {
+    "url": "https://github.com/rishavraj221/infraviz/issues"
+  }
 }
