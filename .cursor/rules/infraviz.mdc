@@ -5,11 +5,14 @@ alwaysApply: false
 
 When asked to visualise, diagram, or document this system's architecture:
 
-1. Read the full spec: run `npx infraviz spec`
-2. Write `.infraviz/project.json`, then per-service artifacts under
+1. FIRST run `npx infraviz view` and tell the user to open the URL. Do not read
+   their code until they have accepted the data-handling notice — `npx infraviz
+   spec` refuses to emit the prompts until then, so this is enforced.
+2. Read the full spec: run `npx infraviz spec`
+3. Write `.infraviz/project.json`, then per-service artifacts under
    `.infraviz/services/<id>/`
-3. Run `npx infraviz verify` and fix anything it reports
-4. Tell the user to run `npx infraviz view`
+4. Run `npx infraviz verify` and fix anything it reports
+5. Stop after the scan and report — do not analyse every service unasked
 
 Non-negotiable: every finding must include `file` plus a `fingerprint` — an exact
 substring that really exists in that file. Verification re-checks these against

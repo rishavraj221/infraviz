@@ -195,7 +195,56 @@ async function cmdInit() {
   console.log(c.dim("\nNext: point your coding agent at this repo and ask it to follow `npx infraviz spec`."));
 }
 
+const CONSENT_NOTICE = `Before I analyse this repository:
+
+- infraviz runs entirely on your machine. It has no servers, no accounts and no
+  telemetry, and writes only to .infraviz/ in this repo. Nothing is sent to it.
+- I generate the results, which means parts of your code go to my provider, just
+  as with any other request you make of me. If your organisation restricts which
+  repositories may be sent to an AI provider, that applies here unchanged.
+- The output contains verbatim snippets of your code and a ranked list of weak
+  points, so treat .infraviz/ as confidential. It is gitignored by default.
+- I may run your test suite to check conclusions. Tell me not to if your tests
+  reach real services.
+
+May I go ahead?`;
+
+async function requireConsent(action) {
+  const { getConsent } = await import("../src/server.mjs");
+  const con = await getConsent(cwd);
+  if (con.accepted) return true;
+
+  console.error(c.yellow(`\nConsent has not been recorded for this repository, so ${action} is unavailable.\n`));
+  console.error("If you are an agent: show the user the following, wait for a clear yes,");
+  console.error(`then run ${c.cyan("npx infraviz consent --accept")}. Do not read their code before that.\n`);
+  console.error(c.dim("─".repeat(70)));
+  console.error(CONSENT_NOTICE);
+  console.error(c.dim("─".repeat(70)));
+  console.error(`\nOr have the user accept in the UI: ${c.cyan("npx infraviz view")}\n`);
+  process.exit(2);
+}
+
+async function cmdConsent() {
+  const { getConsent, CONSENT_VERSION, DIR: D } = await import("../src/server.mjs");
+  if (args.includes("--status")) {
+    const con = await getConsent(cwd);
+    console.log(con.accepted ? c.green(`accepted ${con.at}`) : c.yellow("not accepted"));
+    return;
+  }
+  if (!args.includes("--accept")) {
+    console.log(`\n${CONSENT_NOTICE}\n`);
+    console.log(`To record acceptance: ${c.cyan("npx infraviz consent --accept")}`);
+    console.log(c.dim("Only the person whose code this is should run that.\n"));
+    return;
+  }
+  await mkdir(join(cwd, D), { recursive: true });
+  const rec = { version: CONSENT_VERSION, accepted: true, at: new Date().toISOString(), root: cwd };
+  await writeFile(join(cwd, D, "consent.json"), JSON.stringify(rec, null, 2) + "\n");
+  console.log(`${c.green("✓")} recorded for ${c.dim(cwd)}`);
+}
+
 async function cmdSpec() {
+  await requireConsent("the spec");
   const spec = await import("@infraviz/spec");
   const which = args[1];
   if (which === "scan") return console.log(spec.scanPrompt());
@@ -216,7 +265,8 @@ ${c.bold("infraviz")} — visualise your API's architecture, with every claim ci
   ${c.cyan("npx infraviz view")}        render ${DIR}/ in the browser
   ${c.cyan("npx infraviz status")}      what is generated and what is missing
   ${c.cyan("npx infraviz verify")}      validate schemas and re-check every citation
-  ${c.cyan("npx infraviz spec")}        print the workflow and prompts for your agent
+  ${c.cyan("npx infraviz consent")}     review and record consent for this repo
+  ${c.cyan("npx infraviz spec")}        print the workflow and prompts (needs consent)
   ${c.cyan("npx infraviz init")}        create ${DIR}/
 
 Options
@@ -230,5 +280,15 @@ README before committing them anywhere.
 `);
 }
 
-const commands = { view: cmdView, verify: cmdVerify, status: cmdStatus, init: cmdInit, spec: cmdSpec, help, "--help": help, "-h": help };
+const commands = {
+  view: cmdView,
+  verify: cmdVerify,
+  status: cmdStatus,
+  consent: cmdConsent,
+  init: cmdInit,
+  spec: cmdSpec,
+  help,
+  "--help": help,
+  "-h": help,
+};
 await (commands[cmd] ?? (() => { console.error(c.red(`Unknown command: ${cmd}`)); help(); process.exit(1); }))();

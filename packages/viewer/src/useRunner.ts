@@ -81,9 +81,25 @@ export const useRunner = create<RunnerState>((set, get) => ({
 }));
 
 /** Called by App's single EventSource so job state lives in one place. */
-export function applyJobEvent(ev: { jobId?: string; type?: string; text?: string; done?: boolean; status?: string; error?: string }) {
+export function applyJobEvent(ev: {
+  jobId?: string;
+  type?: string;
+  tool?: string;
+  text?: string;
+  done?: boolean;
+  status?: string;
+  error?: string;
+}) {
   const s = useRunner.getState();
-  if (ev.text) useRunner.setState({ log: [...s.log.slice(-40), ev.text] });
+  // Show what it is actually doing — the files it opens and the commands it runs.
+  // A silent five-minute wait is indistinguishable from a hang.
+  const line =
+    ev.type === "tool"
+      ? `${ev.tool ?? "tool"}  ${(ev.text ?? "").slice(0, 90)}`
+      : ev.type === "thinking"
+        ? (ev.text ?? "").split("\n")[0].slice(0, 110)
+        : ev.text;
+  if (line) useRunner.setState({ log: [...s.log.slice(-60), line] });
   if (ev.done) {
     useRunner.setState({
       running: {},

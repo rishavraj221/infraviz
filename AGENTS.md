@@ -45,7 +45,14 @@ with a one-line verdict and nothing else.
 5. Repeat step 3 only for services the user names
 ```
 
-### Step 0 is not optional — do this before reading any code
+### Step 0 is enforced, not merely requested
+
+`npx infraviz spec` **refuses to print the prompts** until consent is recorded for
+the repository, and exits non-zero with the disclaimer text for you to show. You
+cannot complete this task without going through it, so do not try to work around
+it by improvising the schema from this file.
+
+### Step 0 — do this before reading any code
 
 Run `npx infraviz view` and tell the user to open the URL it prints. The page
 opens on an empty repository and asks them to acknowledge how their data is
@@ -61,6 +68,9 @@ Two reasons this matters:
 2. **Time to first result.** A full analysis takes many minutes. Showing the UI
    in seconds tells the user it is working and lets them choose what to spend
    time on, instead of waiting with nothing on screen.
+
+Record acceptance with `npx infraviz consent --accept` once the user agrees, or
+have them accept in the viewer. Then `npx infraviz spec` works.
 
 If you cannot run commands, state the disclaimer in chat yourself and ask the
 user to confirm before continuing:

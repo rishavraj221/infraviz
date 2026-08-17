@@ -45,8 +45,9 @@ export default function App() {
     const es = new EventSource("/api/events");
     es.onmessage = (m) => {
       const ev = JSON.parse(m.data);
-      if (ev.type === "job") applyJobEvent(ev);
-      if (ev.type === "data-changed") load();
+      // anything carrying a jobId is progress from a run; the rest is file state
+      if (ev.jobId) applyJobEvent(ev);
+      else if (ev.type === "data-changed") load();
     };
     return () => es.close();
   }, []);
@@ -63,9 +64,11 @@ export default function App() {
   // merely cosmetic — nothing reads the codebase until it is recorded.
   if (!consent.accepted) return <ConsentGate repo={repo} onAccept={() => setConsent({ accepted: true })} />;
 
-  // No project yet is a normal starting state, not an error — the UI is the
-  // entry point, so offer both ways to begin from here.
-  if (!data) return <StartScreen />;
+  // A scan that found nothing is not a dashboard of zeros. Either it has not run
+  // or it failed to identify services — both are "start here" states, not results.
+  if (!data || !(data.project.services?.length > 0)) {
+    return <StartScreen emptyScan={Boolean(data)} />;
+  }
 
   if (error) {
     return (

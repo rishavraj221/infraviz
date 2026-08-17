@@ -13,7 +13,7 @@ Stop after the scan — do not generate per-service diagrams yet.`;
  * drive it from here if an agent CLI is installed, or drive it from your IDE.
  * They write the same files, so you can switch between them at any point.
  */
-export default function StartScreen() {
+export default function StartScreen({ emptyScan = false }: { emptyScan?: boolean }) {
   const providers = useRunner((s) => s.providers);
   const loadProviders = useRunner((s) => s.loadProviders);
   const run = useRunner((s) => s.run);
@@ -42,10 +42,13 @@ export default function StartScreen() {
     <div className="min-h-screen flex items-center justify-center px-6 py-16">
       <div className="w-full max-w-2xl">
         <p className="font-mono text-[12px] tracking-wider uppercase text-[var(--accent)] mb-2">infraviz</p>
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Nothing analysed yet</h1>
+        <h1 className="text-3xl font-bold tracking-tight mb-2">
+          {emptyScan ? "The scan found no services" : "Nothing analysed yet"}
+        </h1>
         <p className="text-[var(--ink-soft)] mb-8 leading-relaxed">
-          Start with a scan — it finds the services and infrastructure, and takes a couple of minutes. Per-service
-          diagrams come later, one at a time, so you only pay for what you look at.
+          {emptyScan
+            ? "A scan completed but identified no HTTP services in this repository. Either this repo does not expose any, or the scan looked in the wrong place — running it again, or pointing infraviz at the directory containing your routers, usually resolves it."
+            : "Start with a scan — it finds the services and infrastructure, and takes a couple of minutes. Per-service diagrams come later, one at a time, so you only pay for what you look at."}
         </p>
 
         {error && (
@@ -84,7 +87,7 @@ export default function StartScreen() {
               onClick={() => run("scan")}
               className="text-[13px] font-semibold px-3 py-2.5 rounded-md bg-[var(--accent)] text-[var(--surface)] disabled:opacity-40 cursor-pointer"
             >
-              {busy ? "Scanning…" : "Scan codebase"}
+              {busy ? "Scanning…" : emptyScan ? "Scan again" : "Scan codebase"}
             </button>
             {active && installed.length === 1 && (
               <p className="text-[10.5px] font-mono text-[var(--ink-soft)] mt-1.5 text-center">
@@ -109,13 +112,26 @@ export default function StartScreen() {
           </div>
         </div>
 
-        {log.length > 0 && (
-          <div className="mt-4 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 max-h-[180px] overflow-y-auto">
-            {log.map((l, i) => (
-              <div key={i} className="text-[11px] font-mono text-[var(--ink-soft)] leading-relaxed">
-                {l}
-              </div>
-            ))}
+        {(log.length > 0 || busy) && (
+          <div className="mt-4 rounded-lg border border-[var(--line)] bg-[var(--surface)] overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--line)]">
+              {busy && <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />}
+              <span className="text-[11.5px] font-semibold">
+                {busy ? "Analysing — this takes a few minutes" : "Finished"}
+              </span>
+              <span className="ml-auto text-[10px] font-mono text-[var(--ink-soft)]">{log.length} events</span>
+            </div>
+            <div className="p-3 max-h-[220px] overflow-y-auto flex flex-col-reverse">
+              {[...log].reverse().map((l, i) => (
+                <div
+                  key={log.length - i}
+                  className="text-[11px] font-mono text-[var(--ink-soft)] leading-relaxed truncate"
+                  title={l}
+                >
+                  {l}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

@@ -211,13 +211,16 @@ export async function startServer({ root, port, onReady }) {
     if (!job) return;
     job.events.push(ev);
     if (job.events.length > 300) job.events.splice(0, job.events.length - 300);
-    broadcast({ type: "job", jobId, ...ev });
+    // NB: do not wrap in a `type` field — ev.type is meaningful ("tool",
+    // "thinking", "status") and a spread would clobber it. jobId is the
+    // discriminator instead.
+    broadcast({ ...ev, jobId });
   }
   function finish(jobId, patch) {
     const job = jobs.get(jobId);
     if (!job) return;
     Object.assign(job, patch);
-    broadcast({ type: "job", jobId, ...patch, done: true });
+    broadcast({ ...patch, jobId, done: true });
     broadcast({ type: "data-changed" });
   }
 
