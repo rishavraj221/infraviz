@@ -9,7 +9,9 @@
   },
   "files": [
     "bin",
-    "viewer"
+    "viewer",
+    "README.md",
+    "LICENSE"
   ],
   "keywords": [
     "architecture",

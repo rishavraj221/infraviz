@@ -24,5 +24,8 @@
   "homepage": "https://github.com/rishavraj221/infraviz",
   "bugs": {
     "url": "https://github.com/rishavraj221/infraviz/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
