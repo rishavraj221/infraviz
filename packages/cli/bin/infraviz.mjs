@@ -41,7 +41,7 @@ async function loadAll(root) {
   if (existsSync(svcDir)) {
     for (const id of await readdir(svcDir)) {
       services[id] = {};
-      for (const kind of ["topology", "sequence"]) {
+      for (const kind of ["topology", "sequence", "optimise"]) {
         const f = join(svcDir, id, `${kind}.json`);
         services[id][kind] = existsSync(f) ? JSON.parse(await readFile(f, "utf8")) : null;
       }
@@ -76,6 +76,7 @@ async function cmdVerify() {
   for (const [id, a] of Object.entries(data.services)) {
     if (a.topology) report(`services/${id}/topology.json`, validate("topology", a.topology));
     if (a.sequence) report(`services/${id}/sequence.json`, validate("sequence", a.sequence));
+    if (a.optimise) report(`services/${id}/optimise.json`, validate("optimise", a.optimise));
   }
 
   // fingerprints: the part that catches drift and invention
@@ -98,6 +99,7 @@ async function cmdVerify() {
   for (const [id, a] of Object.entries(data.services)) {
     if (a.topology) await check(`services/${id}`, a.topology);
     if (a.sequence) await check(`services/${id}`, a.sequence);
+    if (a.optimise) await check(`services/${id}`, a.optimise);
   }
 
   if (failures.length) {
@@ -206,8 +208,11 @@ async function cmdSpec() {
   if (which === "scan") return console.log(spec.scanPrompt());
   if (which === "topology") return console.log(spec.topologyPrompt({ name: "<service>", router: "<path>" }));
   if (which === "sequence") return console.log(spec.sequencePrompt({ name: "<service>", router: "<path>" }));
+  if (which === "optimise") return console.log(spec.optimisePrompt({ name: "<service>", router: "<path>" }));
   console.log(`infraviz workflow\n\n${spec.WORKFLOW}\n`);
-  console.log(`Prompts:\n  npx infraviz spec scan\n  npx infraviz spec topology\n  npx infraviz spec sequence\n`);
+  console.log(
+    `Prompts:\n  npx infraviz spec scan\n  npx infraviz spec topology\n  npx infraviz spec sequence\n  npx infraviz spec optimise\n`
+  );
   console.log(spec.RULES);
 }
 

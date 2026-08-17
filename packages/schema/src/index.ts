@@ -137,7 +137,9 @@ export const Topology = z
     taskNodeId: z.string().min(1).describe("the node that autoscales"),
     summary: z.string().min(1),
     lenses: z
-      .array(z.enum(["flow", "load", "ratelimit", "cost", "security", "compliance", "reliability"]))
+      .array(
+        z.enum(["flow", "load", "ratelimit", "cost", "security", "compliance", "reliability", "optimise"])
+      )
       .min(1),
     loadNote: z
       .string()
@@ -206,6 +208,45 @@ export const Topology = z
     });
   });
 
+// ---------------------------------------------------------------- optimise
+
+/**
+ * One concrete improvement. The two fields that carry the value are `costsToday`
+ * (what NOT doing it costs) and `gain` (what doing it buys) — a recommendation
+ * without both is an opinion, not a decision aid.
+ */
+export const Optimisation = z
+  .object({
+    id: z.string().min(1),
+    title: z.string().min(1).max(120).describe("imperative and short: 'Parallelise the three retrieval round trips'"),
+    dimension: z
+      .array(z.enum(["latency", "cost", "reliability", "ux", "scale", "security"]))
+      .min(1)
+      .describe("what this improves"),
+    effort: z.enum(["low", "medium", "high"]).describe("engineering effort, honestly assessed"),
+    confidence: z.enum(["high", "medium", "low"]).describe("how sure you are the gain is real"),
+    costsToday: z
+      .string()
+      .min(1)
+      .describe("what NOT doing this costs right now — quantified where the code allows it"),
+    gain: z.string().min(1).describe("what improves, and by roughly how much"),
+    how: z.string().min(1).describe("the actual change, 1-2 sentences. Mechanism, not platitude."),
+    risk: z.string().optional().describe("what could go wrong or regress — omit if genuinely none"),
+  })
+  .merge(Evidence.partial());
+
+export const Optimisations = z.object({
+  schemaVersion: z.literal(1),
+  /** ordered best-first: highest gain per unit of effort */
+  items: z.array(Optimisation).default([]),
+  /** state plainly when the service is already appropriate for its job */
+  note: z
+    .string()
+    .optional()
+    .describe("use this to say 'nothing worth changing' rather than inventing filler"),
+  _meta: z.record(z.string(), z.unknown()).optional(),
+});
+
 // ---------------------------------------------------------------- sequence
 
 export const SeqRow = z.union([
@@ -268,8 +309,15 @@ export type ServiceDef = z.infer<typeof ServiceDef>;
 export type Topology = z.infer<typeof Topology>;
 export type Sequence = z.infer<typeof Sequence>;
 export type Finding = z.infer<typeof Finding>;
+export type Optimisation = z.infer<typeof Optimisation>;
+export type Optimisations = z.infer<typeof Optimisations>;
 
-export const SCHEMAS = { project: Project, topology: Topology, sequence: Sequence } as const;
+export const SCHEMAS = {
+  project: Project,
+  topology: Topology,
+  sequence: Sequence,
+  optimise: Optimisations,
+} as const;
 export type ArtifactKind = keyof typeof SCHEMAS;
 
 export interface ValidationResult<T> {

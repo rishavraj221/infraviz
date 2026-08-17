@@ -33,15 +33,22 @@ with a one-line verdict and nothing else.
 ## Workflow
 
 ```
-1. Scan            → .infraviz/project.json
-2. Per service     → .infraviz/services/<id>/sequence.json
-                   → .infraviz/services/<id>/topology.json
-3. npx infraviz verify     (fix anything it reports, then re-verify)
-4. npx infraviz view       (tell the user to run this)
+1. Scan            → .infraviz/project.json     ← then STOP
+2. npx infraviz view                            ← user picks a service
+3. ONE service     → sequence.json, topology.json, optimise.json
+4. npx infraviz verify     (fix anything it reports, then re-verify)
+5. Repeat step 3 only for services the user names
 ```
 
-Do step 1 once. Then do step 2 for the services worth it — start with the most
-complex one rather than doing all of them, and let the user ask for more.
+**Stop after step 1 and report.** Do not continue into step 3 on your own.
+
+This matters. A whole-repo pass on a real codebase takes hours, costs real money,
+and most of the output goes unread — the user is looking at one service at a
+time. Step 1 is cheap and gives them the whole map to choose from. Wait for them
+to pick.
+
+If they explicitly ask you to do everything, do it — but say what it will cost
+first.
 
 ### Getting the exact prompts
 
@@ -106,6 +113,20 @@ because they belong to nobody.
 Write `sequence.json` first (it forces you to understand the real order of
 operations), then `topology.json` reusing the same step ids so the two diagrams
 cross-highlight.
+
+There are three artifacts per service:
+
+| Artifact | What it answers |
+|---|---|
+| `sequence.json` | What actually happens, in order |
+| `topology.json` | Who talks to whom, plus security/compliance/reliability findings |
+| `optimise.json` | What to improve, what it costs today, what you gain |
+
+`optimise.json` is usually the one people act on. Get its shape from `npx
+infraviz spec optimise`. The two fields that carry its value are `costsToday`
+(the cost of inaction) and `gain` — an item missing either is an opinion, not a
+recommendation, and should be dropped. Add `"optimise"` to the topology's
+`lenses` array so the viewer shows the tab.
 
 Get the exact shapes from `npx infraviz spec topology` and `npx infraviz spec
 sequence`. Key constraints the validator enforces:

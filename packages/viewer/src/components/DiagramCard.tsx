@@ -13,7 +13,8 @@ import {
 import ServiceNode, { type ServiceNodeData } from "./nodes/ServiceNode";
 import FloatingEdge from "./edges/FloatingEdge";
 import { useVizStore, type Tab } from "../store/useVizStore";
-import type { Topology, Finding } from "../types";
+import type { Topology, Finding, Optimisations } from "../types";
+import OptimiseLens from "./OptimiseLens";
 
 const nodeTypes = { service: ServiceNode };
 const edgeTypes = { floating: FloatingEdge };
@@ -27,6 +28,7 @@ const TABS: [Tab, string][] = [
   ["security", "Security"],
   ["compliance", "Compliance"],
   ["reliability", "Reliability"],
+  ["optimise", "Optimise"],
 ];
 const RISK: Tab[] = ["security", "compliance", "reliability"];
 
@@ -36,7 +38,13 @@ function buildEdgeStepMap(topo: Topology): Record<string, string[]> {
   return map;
 }
 
-export default function DiagramCard({ topology }: { topology: Topology }) {
+export default function DiagramCard({
+  topology,
+  optimise,
+}: {
+  topology: Topology;
+  optimise?: Optimisations | null;
+}) {
   const activeTab = useVizStore((s) => s.activeTab);
   const setActiveTab = useVizStore((s) => s.setActiveTab);
   const selectedStep = useVizStore((s) => s.selectedStep);
@@ -48,7 +56,9 @@ export default function DiagramCard({ topology }: { topology: Topology }) {
   const fanOutUnits = useVizStore((s) => s.fanOutUnits);
   const setFanOutUnits = useVizStore((s) => s.setFanOutUnits);
 
-  const available = TABS.filter(([k]) => topology.lenses.includes(k));
+  const available = TABS.filter(([k]) =>
+    k === "optimise" ? Boolean(optimise) : topology.lenses.includes(k)
+  );
   const tabFindings: Finding[] | undefined = RISK.includes(activeTab)
     ? topology.risk[activeTab as "security" | "compliance" | "reliability"]
     : undefined;
@@ -208,6 +218,12 @@ export default function DiagramCard({ topology }: { topology: Topology }) {
             {topology.loadNote ??
               "No load measurements were found for this service, so no CPU or throughput curve is shown rather than implying one exists."}
           </div>
+        </div>
+      )}
+
+      {activeTab === "optimise" && optimise && (
+        <div className="mt-4 pt-4 border-t border-[var(--line)]">
+          <OptimiseLens data={optimise} />
         </div>
       )}
 

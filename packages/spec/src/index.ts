@@ -156,9 +156,71 @@ Write to .infraviz/services/<service-id>/sequence.json:
   when the return is uninteresting.`;
 }
 
-export const WORKFLOW = `1. Scan  → .infraviz/project.json          (once per repo)
-2. Per service, generate:
-     .infraviz/services/<id>/sequence.json
-     .infraviz/services/<id>/topology.json
-3. Verify → npx infraviz verify
-4. View   → npx infraviz view`;
+export function optimisePrompt(service: { name: string; router: string }): string {
+  return `Identify concrete optimisations for ONE service.
+
+SERVICE: ${service.name}
+ROUTER: ${service.router}
+
+This is the most useful artifact in the set, and the easiest to fill with
+platitudes. The bar: a senior engineer reads an item and immediately knows
+whether to do it. "Add caching" fails that bar. "The same question re-embeds and
+re-retrieves on every ask; a 5-minute cache on the question hash removes 3 of the
+9 calls" passes it.
+
+${RULES}
+
+Write to .infraviz/services/<service-id>/optimise.json:
+{
+  "schemaVersion": 1,
+  "note": "Use this to say nothing is worth changing, if that is the truth.",
+  "items": [
+    {
+      "id": "kebab-id",
+      "title": "Imperative and short — 'Parallelise the three retrieval round trips'",
+      "dimension": ["latency"],
+      "effort": "low",
+      "confidence": "high",
+      "costsToday": "What NOT doing this costs, quantified where the code allows.",
+      "gain": "What improves, and roughly by how much.",
+      "how": "The actual change, 1-2 sentences. Mechanism, not advice.",
+      "risk": "What could regress. Omit if genuinely none.",
+      "file": "...", "fingerprint": "..."
+    }
+  ]
+}
+
+Rules that make this worth reading:
+
+- ORDER BEST FIRST — highest gain per unit of effort at the top. The reader
+  should be able to stop after item 2 and still have the wins.
+- QUANTIFY FROM THE CODE. "3 sequential calls become 1 round trip" is derivable.
+  "40% faster" is not, unless you measured it. Never invent a percentage; say
+  "roughly 3x fewer round trips on this path" instead.
+- \`costsToday\` is the whole point. An optimisation with no stated cost of
+  inaction is just a preference. If you cannot say what it costs today, drop it.
+- BE HONEST ABOUT EFFORT. "low" means an afternoon. If it needs a schema
+  migration or a new service, say "high" — a cheap-looking suggestion that is
+  actually a month of work destroys trust in the whole list.
+- dimension: latency | cost | reliability | ux | scale | security. Use the ones
+  that genuinely apply, not all of them.
+- SAY WHEN IT IS ALREADY FINE. A thin, correct CRUD endpoint should return
+  \`items: []\` with a note saying so. Padding this file is worse than leaving it
+  empty, because it trains the reader to skim past the real items.
+- Prefer removing work over adding machinery. Deleting a redundant call beats
+  adding a cache; adding a cache beats adding a queue.
+
+Also set "optimise" in the topology's "lenses" array so the viewer shows the tab.`;
+}
+
+export const WORKFLOW = `INCREMENTAL BY DESIGN — do not analyse everything in one pass.
+
+1. Scan            → .infraviz/project.json     then STOP and report
+2. npx infraviz view                            user picks a service
+3. For ONE service → sequence.json, topology.json, optimise.json
+4. npx infraviz verify                          fix anything reported
+5. Repeat step 3 only for services the user asks for
+
+Step 1 is cheap and gives the whole map. Steps 3 onward are expensive and only
+worth spending on services the user actually cares about. A large repo analysed
+end-to-end in one pass burns hours and most of the output goes unread.`;

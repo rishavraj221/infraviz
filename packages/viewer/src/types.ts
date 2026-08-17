@@ -110,7 +110,32 @@ export interface Sequence {
   _meta?: Record<string, unknown>;
 }
 
+export interface Optimisation {
+  id: string;
+  title: string;
+  dimension: ("latency" | "cost" | "reliability" | "ux" | "scale" | "security")[];
+  effort: "low" | "medium" | "high";
+  confidence: "high" | "medium" | "low";
+  costsToday: string;
+  gain: string;
+  how: string;
+  risk?: string;
+  file?: string;
+  line?: number;
+  verification?: "verified" | "failed" | "unverifiable";
+}
+
+export interface Optimisations {
+  schemaVersion: 1;
+  items: Optimisation[];
+  note?: string;
+  _meta?: Record<string, unknown>;
+}
+
 export interface VizData {
   project: Project;
-  services: Record<string, { topology: Topology | null; sequence: Sequence | null }>;
+  services: Record<
+    string,
+    { topology: Topology | null; sequence: Sequence | null; optimise: Optimisations | null }
+  >;
 }

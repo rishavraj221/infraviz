@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import DiagramCard from "./components/DiagramCard";
+import RequestPanel from "./components/RequestPanel";
 import SequenceDiagram from "./components/SequenceDiagram";
 import Sidebar from "./components/Sidebar";
 import OverallView from "./components/OverallView";
@@ -86,10 +87,20 @@ Verify with: npx infraviz verify`}
                   </pre>
                 </div>
               ) : (
-                <ReactFlowProvider key={activeService}>
-                  {sequence && <SequenceDiagram seq={sequence} />}
-                  {topology && <DiagramCard topology={topology} />}
-                </ReactFlowProvider>
+                <>
+                  <RequestPanel
+                    service={service!}
+                    has={{
+                      topology: Boolean(topology),
+                      sequence: Boolean(sequence),
+                      optimise: Boolean(art?.optimise),
+                    }}
+                  />
+                  <ReactFlowProvider key={activeService}>
+                    {sequence && <SequenceDiagram seq={sequence} />}
+                    {topology && <DiagramCard topology={topology} optimise={art?.optimise ?? null} />}
+                  </ReactFlowProvider>
+                </>
               )}
             </div>
           )}

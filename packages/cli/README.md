@@ -15,11 +15,15 @@ In Cursor, Claude Code, Codex — anywhere with a coding agent:
 > Visualise the system design of this API. Follow the spec at
 > `github.com/rishavraj221/infraviz` — run `npx infraviz spec` for the exact format.
 
-The agent reads your code, writes JSON into `.infraviz/`, and you run:
+The agent scans the repo, writes `.infraviz/project.json`, and stops. Then:
 
 ```bash
 npx infraviz view
 ```
+
+Pick a service, and the page hands you a ready-made prompt to generate its
+diagrams. **Analysis is incremental by design** — one service at a time, so you
+never pay for a whole-repo pass whose output you won't read.
 
 That's the whole loop. The agent doing the work is the one you already have, so
 there's nothing to install and no second model to pay for.
@@ -188,6 +192,7 @@ before pointing it at anything confidential.
 | **Security** | Findings anchored to the hop they affect, in severity colour |
 | **Compliance** | Data handling, retention, egress |
 | **Reliability** | Compounding failure across dependencies. Drag the fan-out slider and watch end-to-end success collapse |
+| **Optimise** | Ranked improvements: what each one costs you *today*, what you *gain*, effort, and the mechanism |
 
 Plus a **sequence diagram** per service, auto-laid-out — including work that
 continues *after* the HTTP response, which is where the interesting failure modes
