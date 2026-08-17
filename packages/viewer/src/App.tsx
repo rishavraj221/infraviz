@@ -6,6 +6,7 @@ import SequenceDiagram from "./components/SequenceDiagram";
 import Sidebar from "./components/Sidebar";
 import OverallView from "./components/OverallView";
 import StartScreen from "./components/StartScreen";
+import ProgressPanel from "./components/ProgressPanel";
 import ConsentGate from "./components/ConsentGate";
 import { useVizStore } from "./store/useVizStore";
 import { applyJobEvent } from "./useRunner";
@@ -24,7 +25,10 @@ export default function App() {
       fetch("/api/data")
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((d) => {
-          setData(d?.project ? d : null);
+          // Keep the whole payload. Nulling it when project.json is absent also
+          // threw away `progress`, which is exactly what arrives DURING a scan —
+          // so the page looked idle for the entire run.
+          setData(d ?? null);
           setLoaded(true);
         })
         .catch((e) => {
@@ -68,9 +72,10 @@ export default function App() {
 
   // A scan that found nothing is not a dashboard of zeros. Either it has not run
   // or it failed to identify services — both are "start here" states, not results.
-  if (!data || !(data.project.services?.length > 0)) {
-    return <StartScreen emptyScan={Boolean(data)} progress={data?.progress ?? null} />;
+  if (!data?.project || !(data.project.services?.length > 0)) {
+    return <StartScreen emptyScan={Boolean(data?.project)} progress={data?.progress ?? null} />;
   }
+  const project = data.project;
 
   if (error) {
     return (
@@ -93,6 +98,11 @@ export default function App() {
         <Sidebar data={data} />
 
         <main className="min-w-0 flex-1">
+          {data.progress && !data.progress.done && (
+            <div className="mb-5">
+              <ProgressPanel progress={data.progress} />
+            </div>
+          )}
           <p className="font-mono text-[12px] tracking-wider uppercase text-[var(--accent)] mb-2">
             {data.project.name} ·{" "}
             {isOverall

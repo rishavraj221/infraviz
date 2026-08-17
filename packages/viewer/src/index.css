@@ -76,3 +76,19 @@ code {
 .react-flow__attribution {
   display: none;
 }
+
+/* Progress motion. Indeterminate on purpose — step count is unknown ahead of
+   time, and a fabricated percentage that sticks at 80% reads as broken. */
+@keyframes iv-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+.iv-sweep { animation: iv-sweep 1.4s ease-in-out infinite; }
+
+@keyframes iv-spin { to { transform: rotate(360deg); } }
+.iv-spin { animation: iv-spin 0.7s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .iv-sweep, .iv-spin { animation: none; }
+  .iv-sweep { width: 100%; opacity: 0.5; }
+}
