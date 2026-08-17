@@ -22,7 +22,10 @@ files, so you can switch mid-way: scan from the UI, generate diagrams in Cursor,
 or the reverse.
 
 The page stays in sync. The server watches `.infraviz/`, so work your IDE does
-appears in an already-open tab without a reload. And `npx infraviz status` shows
+appears in an already-open tab without a reload — including **live progress while
+it works**: the agent reports each step with `npx infraviz progress "..."`, which
+appends to `.infraviz/progress.json` and streams straight into the page. A scan
+takes minutes, and this is what tells you it is working rather than hung. And `npx infraviz status` shows
 what is done and what is missing — that is how an agent resumes from wherever you
 left off:
 

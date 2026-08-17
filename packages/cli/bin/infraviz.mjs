@@ -266,6 +266,25 @@ async function cmdConsent() {
   console.log(`${c.green("✓")} recorded for ${c.dim(cwd)}\n`);
 }
 
+async function cmdProgress() {
+  const { appendProgress, loadProgress } = await import("../src/server.mjs");
+  const flags = new Set(args.filter((a) => a.startsWith("--")));
+  const text = args.slice(1).filter((a) => !a.startsWith("--")).join(" ");
+
+  if (flags.has("--show")) {
+    const cur = await loadProgress(cwd);
+    if (!cur) return console.log(c.dim("no progress recorded"));
+    for (const st of cur.steps ?? []) console.log(`  ${c.dim(st.at.slice(11, 19))}  ${st.text}`);
+    return console.log(cur.done ? c.green("\n  done") : c.dim("\n  in progress"));
+  }
+
+  if (!text && !flags.has("--done")) {
+    console.error("usage: infraviz progress \"what you are doing\"  [--start] [--done]");
+    process.exit(1);
+  }
+  await appendProgress(cwd, text || "Finished", { reset: flags.has("--start"), done: flags.has("--done") });
+}
+
 async function cmdDoctor() {
   const { detectAll } = await import("../src/providers.mjs");
   const { getConsent } = await import("../src/server.mjs");
@@ -327,6 +346,7 @@ ${c.bold("infraviz")} — visualise your API's architecture, with every claim ci
   ${c.cyan("npx infraviz view")}        render ${DIR}/ in the browser
   ${c.cyan("npx infraviz status")}      what is generated and what is missing
   ${c.cyan("npx infraviz verify")}      validate schemas and re-check every citation
+  ${c.cyan("npx infraviz progress")}    report a step, so the open viewer shows it live
   ${c.cyan("npx infraviz doctor")}      check environment and detected agent CLIs
   ${c.cyan("npx infraviz consent")}     review and record consent for this repo
   ${c.cyan("npx infraviz spec")}        print the workflow and prompts (needs consent)
@@ -349,6 +369,7 @@ const commands = {
   status: cmdStatus,
   consent: cmdConsent,
   doctor: cmdDoctor,
+  progress: cmdProgress,
   init: cmdInit,
   spec: cmdSpec,
   help,

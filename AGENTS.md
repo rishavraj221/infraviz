@@ -112,6 +112,21 @@ to pick.
 If they explicitly ask you to do everything, do it — but say what it will cost
 first.
 
+### Keep the viewer alive while you work
+
+The user has a page open that has no way to observe you. Report in as you go:
+
+```bash
+npx infraviz progress --start "Reading routers under app/api"
+npx infraviz progress "Found 12 services, checking infrastructure"
+npx infraviz progress "Writing project.json" --done
+```
+
+Each call appends to `.infraviz/progress.json`, which the viewer streams live.
+Call it at the start, at each meaningful step, and once at the end with `--done`.
+A scan takes minutes; without this the user is staring at a static screen with no
+way to tell working from hung.
+
 ### Getting the exact prompts
 
 ```bash

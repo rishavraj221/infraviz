@@ -69,7 +69,7 @@ export default function App() {
   // A scan that found nothing is not a dashboard of zeros. Either it has not run
   // or it failed to identify services — both are "start here" states, not results.
   if (!data || !(data.project.services?.length > 0)) {
-    return <StartScreen emptyScan={Boolean(data)} />;
+    return <StartScreen emptyScan={Boolean(data)} progress={data?.progress ?? null} />;
   }
 
   if (error) {

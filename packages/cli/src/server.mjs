@@ -54,6 +54,47 @@ export async function getConsent(root) {
   }
 }
 
+/**
+ * Progress reported by an IDE-driven agent via `infraviz progress`.
+ *
+ * When the work happens in Cursor rather than through this server, nothing here
+ * can observe it — the first sign of life would otherwise be the finished file
+ * appearing minutes later. So the agent reports in, and the existing .infraviz
+ * watcher turns each report into a live push for free.
+ */
+export async function loadProgress(root) {
+  const f = join(root, DIR, "progress.json");
+  if (!existsSync(f)) return null;
+  try {
+    const p = JSON.parse(await readFile(f, "utf8"));
+    // a report older than five minutes means the agent stopped without saying so
+    const stale = Date.now() - new Date(p.updatedAt ?? 0).getTime() > 5 * 60_000;
+    return { ...p, stale: stale && !p.done };
+  } catch {
+    return null;
+  }
+}
+
+export async function appendProgress(root, text, opts = {}) {
+  const f = join(root, DIR, "progress.json");
+  await mkdir(join(root, DIR), { recursive: true });
+  let cur = { startedAt: new Date().toISOString(), steps: [] };
+  if (existsSync(f)) {
+    try {
+      cur = JSON.parse(await readFile(f, "utf8"));
+    } catch {
+      /* corrupt file — start over rather than fail the agent's command */
+    }
+  }
+  if (opts.reset) cur = { startedAt: new Date().toISOString(), steps: [] };
+  cur.steps = [...(cur.steps ?? []), { at: new Date().toISOString(), text }].slice(-60);
+  cur.updatedAt = new Date().toISOString();
+  cur.done = Boolean(opts.done);
+  cur.source = "ide";
+  await writeFile(f, JSON.stringify(cur, null, 2) + "\n");
+  return cur;
+}
+
 export async function loadAll(root) {
   const base = join(root, DIR);
   const project = existsSync(join(base, "project.json"))
@@ -148,7 +189,10 @@ export async function startServer({ root, port, onReady }) {
     const url = new URL(req.url, "http://localhost");
     const p = url.pathname;
 
-    if (p === "/api/data") return json(res, 200, await loadAll(root));
+    if (p === "/api/data") {
+      const [data, progress] = await Promise.all([loadAll(root), loadProgress(root)]);
+      return json(res, 200, { ...data, progress });
+    }
 
     if (p === "/api/consent") {
       if (req.method === "POST") {

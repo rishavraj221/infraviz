@@ -132,10 +132,20 @@ export interface Optimisations {
   _meta?: Record<string, unknown>;
 }
 
+export interface Progress {
+  startedAt?: string;
+  updatedAt?: string;
+  done?: boolean;
+  stale?: boolean;
+  source?: string;
+  steps?: { at: string; text: string }[];
+}
+
 export interface VizData {
   project: Project;
   services: Record<
     string,
     { topology: Topology | null; sequence: Sequence | null; optimise: Optimisations | null }
   >;
+  progress?: Progress | null;
 }

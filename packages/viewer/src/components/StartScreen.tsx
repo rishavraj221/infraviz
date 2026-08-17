@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRunner } from "../useRunner";
+import ProgressPanel from "./ProgressPanel";
+import type { Progress } from "../types";
 
 const IDE_PROMPT = `Scan this repository with infraviz.
 
@@ -13,7 +15,7 @@ Stop after the scan — do not generate per-service diagrams yet.`;
  * drive it from here if an agent CLI is installed, or drive it from your IDE.
  * They write the same files, so you can switch between them at any point.
  */
-export default function StartScreen({ emptyScan = false }: { emptyScan?: boolean }) {
+export default function StartScreen({ emptyScan = false, progress }: { emptyScan?: boolean; progress?: Progress | null }) {
   const providers = useRunner((s) => s.providers);
   const loadProviders = useRunner((s) => s.loadProviders);
   const run = useRunner((s) => s.run);
@@ -53,6 +55,12 @@ export default function StartScreen({ emptyScan = false }: { emptyScan?: boolean
 
         {error && (
           <div className="rounded-lg bg-[var(--danger-soft)] text-[var(--danger)] p-3.5 text-[12.5px] mb-4">{error}</div>
+        )}
+
+        {progress && !progress.done && (
+          <div className="mb-4">
+            <ProgressPanel progress={progress} />
+          </div>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

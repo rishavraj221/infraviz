@@ -29,6 +29,17 @@ USE YOUR TOOLS — they materially improve the result:
 - Look things up on the web when a vendor price or documented behaviour changes
   your conclusion.
 
+REPORT YOUR PROGRESS — the user is watching a viewer that cannot see you:
+
+    npx infraviz progress --start "Reading routers under app/api"
+    npx infraviz progress "Found 12 services, checking infrastructure"
+    npx infraviz progress "Writing project.json" --done
+
+Call it when you begin, at each meaningful step, and when you finish. Without
+this the page sits idle for the several minutes you are working, which is
+indistinguishable from a hang. One short line per step is enough; do not narrate
+every file you open.
+
 OUTPUT: one JSON object, nothing else. No prose, no markdown fence.`;
 
 export function scanPrompt(): string {
