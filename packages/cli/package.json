@@ -1,0 +1,14 @@
+{
+  "name": "infraviz",
+  "version": "0.1.0",
+  "description": "Visualise your API's architecture from your codebase — request flow, load, cost and risk, with every claim cited and verified",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "infraviz": "bin/infraviz.mjs" },
+  "files": ["bin", "viewer"],
+  "keywords": ["architecture", "diagram", "sequence-diagram", "system-design", "mcp", "ai-agent"],
+  "dependencies": {
+    "@infraviz/schema": "^0.1.0",
+    "@infraviz/spec": "^0.1.0"
+  }
+}

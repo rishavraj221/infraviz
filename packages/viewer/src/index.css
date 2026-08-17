@@ -1,0 +1,78 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+:root {
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --ink: #151b1a;
+  --ink-soft: #4b5654;
+  --line: #dde3e0;
+  --accent: #1f7a70;
+  --accent-soft: #e4f1ee;
+  --warn: #b9762f;
+  --warn-soft: #f6ead9;
+  --danger: #b3402f;
+  --danger-soft: #f7e4df;
+  --ok: #3c7a4e;
+  --ok-soft: #e3f0e6;
+  --mono-bg: #eef1ef;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111514;
+    --surface: #171d1c;
+    --ink: #e9efec;
+    --ink-soft: #a9b6b2;
+    --line: #2a3432;
+    --accent: #5ec9bb;
+    --accent-soft: #1a2b28;
+    --warn: #dba766;
+    --warn-soft: #2c2418;
+    --danger: #e2897a;
+    --danger-soft: #2c1a17;
+    --ok: #7cc492;
+    --ok-soft: #182a1e;
+    --mono-bg: #1c2321;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--mono-bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.88em;
+}
+
+/* react-flow theming to match the doc's palette */
+.react-flow {
+  --xy-background-color: var(--bg);
+  --xy-node-background-color: var(--surface);
+  --xy-node-border: 1px solid var(--line);
+  --xy-node-color: var(--ink);
+  --xy-edge-stroke: var(--ink-soft);
+  --xy-edge-stroke-width: 1.2px;
+  --xy-controls-button-background-color: var(--surface);
+  --xy-controls-button-border-color: var(--line);
+}
+.react-flow__attribution {
+  display: none;
+}

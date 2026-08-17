@@ -1,0 +1,12 @@
+{
+  "name": "infraviz-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": ["packages/*"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "verify": "node packages/cli/bin/infraviz.mjs verify",
+    "dev:viewer": "npm run dev -w @infraviz/viewer"
+  }
+}
