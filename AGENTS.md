@@ -17,8 +17,8 @@ Everything hinges on one rule:
 
 That substring is called a `fingerprint`. `npx infraviz verify` re-reads the real
 file and confirms the substring is still there. This is what makes the output
-trustworthy instead of merely plausible — and what lets these artifacts be
-committed as living documentation that fails CI when it drifts from reality.
+trustworthy instead of merely plausible — and what lets a CI gate fail when the
+docs drift from reality.
 
 If you invent a citation, verification catches it and the reader sees
 `unverified claim` next to your finding. Don't do that.
@@ -153,8 +153,12 @@ Tell the user:
 1. What you found — service count, and the one or two findings that matter most
 2. Anything you could not verify, and why
 3. `npx infraviz view` to see it
-4. That `.infraviz/` is safe to commit, and `npx infraviz verify --strict` works
-   as a CI gate that fails when the diagrams drift from the code
+4. That `npx infraviz verify --strict` works as a CI gate against drift
+
+Also warn them, once, that `.infraviz/` holds verbatim source snippets and a
+prioritised list of their system's weak points — so it should be gitignored by
+default and never committed to a public repo. Do not describe it as "safe to
+commit".
 
 Do not claim you verified something you did not. If `npx infraviz verify` reports
 failures you could not resolve, say so plainly.

@@ -96,13 +96,86 @@ you can see when the generator asserted something your code doesn't support.
 Two consequences worth the trouble:
 
 - **Hallucinations are visible** rather than indistinguishable from real findings.
-- **The docs can't rot silently.** `.infraviz/` is designed to be committed, and
-  `npx infraviz verify --strict` is a CI gate that fails when the diagrams drift
-  away from the code they describe.
+- **The docs can't rot silently.** `npx infraviz verify --strict` is a CI gate
+  that fails when the diagrams drift away from the code they describe — if you
+  choose to commit `.infraviz/`. Read [Security](#security) before you do: the
+  output includes verbatim source snippets and a prioritised list of your
+  system's weak points.
 
 The spec also explicitly permits an agent to report **nothing**. A generator
 forced to produce N findings will invent them, and one invented finding devalues
 every real one beside it.
+
+---
+
+## Security
+
+Read this before pointing it at a work codebase.
+
+### What infraviz itself does
+
+| | |
+|---|---|
+| Network calls from the CLI | **none** |
+| `view` server binding | `127.0.0.1` only — not reachable from your network |
+| Telemetry / analytics | none |
+| Third-party dependencies | one (`zod`) |
+
+Nothing leaves your machine when you run `verify` or `view`. The npm download is
+the only network activity.
+
+### The output is sensitive — more sensitive than your source
+
+`.infraviz/` contains two things worth thinking about:
+
+- **Verbatim source snippets.** Every `fingerprint` is an exact substring copied
+  out of your code.
+- **A prioritised map of your weak points.** Findings are file-and-line accurate
+  descriptions of what breaks and how. A real example from a scan:
+
+  ```json
+  { "title": "Unsanitised device_name is joined into a path that gets rmtree'd",
+    "file": "app/routers/risk.py",
+    "breaks": "A device_name containing ../ escapes the per-user folder, and
+               recreate_folder() then deletes that arbitrary tree." }
+  ```
+
+That is useful to you and equally useful to an attacker. Treat `.infraviz/` as at
+least as confidential as the source it describes.
+
+**Recommended default: `.gitignore` it.**
+
+```bash
+echo ".infraviz/" >> .gitignore
+```
+
+Commit it only when you have decided deliberately that a private repo is the
+right home for a curated list of your own vulnerabilities. **Never** commit it to
+a public repo.
+
+### Your code goes to whichever AI vendor you use
+
+This is inherent to using a coding agent, not to infraviz — but infraviz
+**increases exposure**, because the spec asks the agent to read broadly: routers,
+the modules they import, your IaC, and to run your test suite. That is more of
+the codebase than a typical targeted question.
+
+Before running it on employer-owned code:
+
+- Confirm your company permits sending that repository to your agent's vendor
+- Check whether privacy / zero-retention mode is enabled on your account
+- Know that your IaC gets read too — instance sizes, service names, regions
+
+### The agent may run your tests
+
+The spec tells it to, because tests reveal what is actually exercised. On a work
+machine that could reach real dev or staging services, write cache files, or
+consume API quota. If that matters, tell the agent explicitly not to run tests.
+
+### Suggested first run
+
+Try it on a non-sensitive repository first, so you see the shape of the output
+before pointing it at anything confidential.
 
 ---
 

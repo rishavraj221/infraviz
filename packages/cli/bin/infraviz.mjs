@@ -171,7 +171,32 @@ async function cmdInit() {
       JSON.stringify({ schemaVersion: 1, name: cwd.split("/").pop(), services: [], platformFindings: [] }, null, 2) + "\n"
     );
   }
-  console.log(`${c.green("✓")} created ${DIR}/  ${c.dim("(safe to commit — these are living architecture docs)")}`);
+  console.log(`${c.green("✓")} created ${DIR}/`);
+
+  // Safe default, applied rather than merely suggested: the artifacts contain
+  // source snippets and a ranked list of weak points. Opting in to committing
+  // them should be a deliberate act.
+  const gi = join(cwd, ".gitignore");
+  let ignored = false;
+  try {
+    const cur = existsSync(gi) ? await readFile(gi, "utf8") : "";
+    if (!cur.split("\n").some((l) => l.trim() === `${DIR}/` || l.trim() === DIR)) {
+      await writeFile(gi, (cur && !cur.endsWith("\n") ? cur + "\n" : cur) + `${DIR}/\n`);
+    }
+    ignored = true;
+  } catch {
+    /* no write access — fall through to the advisory note */
+  }
+
+  if (ignored) {
+    console.log(c.dim(`  added ${DIR}/ to .gitignore`));
+  }
+  console.log(
+    c.yellow("  Note: ") +
+      `${DIR}/ will hold verbatim source snippets and a ranked list of your\n` +
+      `  system's weak points.${ignored ? " Remove the .gitignore line only if you" : " Gitignore it unless you"}\n` +
+      "  deliberately want that in version control. Never in a public repo."
+  );
   console.log(c.dim("\nNext: point your coding agent at this repo and ask it to follow `npx infraviz spec`."));
 }
 
@@ -200,8 +225,9 @@ Options
   --no-open     view: don't open a browser
   --strict      verify: exit non-zero on any problem (use in CI)
 
-Artifacts live in ${DIR}/ inside your repo, so they can be committed and
-drift-checked in CI alongside the code they describe.
+Artifacts live in ${DIR}/ inside your repo. They contain source snippets and
+security findings — gitignore by default, and see the Security section of the
+README before committing them anywhere.
 `);
 }
 
