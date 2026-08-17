@@ -119,35 +119,24 @@ export default function App() {
             <div className="flex flex-col gap-6">
               <p className="text-[var(--ink-soft)] max-w-2xl">{topology?.summary ?? service!.verdict}</p>
 
-              {!topology && !sequence ? (
-                <div className="rounded-xl border border-dashed border-[var(--line)] p-6">
-                  <h2 className="text-[14px] font-bold mb-1.5">No diagrams generated for this service yet</h2>
-                  <p className="text-[12.5px] text-[var(--ink-soft)] leading-relaxed mb-3">
-                    Ask your agent to generate them, then reload this page:
-                  </p>
-                  <pre className="text-[11.5px] font-mono bg-[var(--bg)] border border-[var(--line)] rounded-md p-3 overflow-x-auto">
-                    {`Generate infraviz artifacts for "${service!.name}" (${service!.router}).
-Follow: npx infraviz spec sequence
-Then:   npx infraviz spec topology
-Write to .infraviz/services/${service!.id}/
-Verify with: npx infraviz verify`}
-                  </pre>
-                </div>
-              ) : (
-                <>
-                  <RequestPanel
-                    service={service!}
-                    has={{
-                      topology: Boolean(topology),
-                      sequence: Boolean(sequence),
-                      optimise: Boolean(art?.optimise),
-                    }}
-                  />
-                  <ReactFlowProvider key={activeService}>
-                    {sequence && <SequenceDiagram seq={sequence} />}
-                    {topology && <DiagramCard topology={topology} optimise={art?.optimise ?? null} service={service!} />}
-                  </ReactFlowProvider>
-                </>
+              {/* Always offer the generate controls for whatever is missing. These
+                  used to appear only once something already existed, which is
+                  exactly backwards: the moment you most need them is when the
+                  service has nothing yet. */}
+              <RequestPanel
+                service={service!}
+                has={{
+                  topology: Boolean(topology),
+                  sequence: Boolean(sequence),
+                  optimise: Boolean(art?.optimise),
+                }}
+              />
+
+              {(sequence || topology) && (
+                <ReactFlowProvider key={activeService}>
+                  {sequence && <SequenceDiagram seq={sequence} />}
+                  {topology && <DiagramCard topology={topology} optimise={art?.optimise ?? null} service={service!} />}
+                </ReactFlowProvider>
               )}
             </div>
           )}

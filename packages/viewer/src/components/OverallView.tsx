@@ -17,6 +17,7 @@ export default function OverallView({ data }: { data: VizData }) {
   const platform = project.platformFindings ?? [];
 
   const criticals = services.filter((s) => s.severity === "critical").length;
+  void criticals;
   const generated = services.filter((s) => data.services[s.id]?.topology || data.services[s.id]?.sequence).length;
 
   // count every citation across the whole artifact set
@@ -36,21 +37,41 @@ export default function OverallView({ data }: { data: VizData }) {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* A zero that means "not done yet" and a zero that means "none found" look
+          identical, and both read as failure. So say which one it is instead of
+          printing a number with no context. */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Stat label="Services" value={String(services.length)} sub={`${generated} with diagrams`} />
+        <Stat label="Services" value={String(services.length)} sub="found by the scan" />
         <Stat
-          label="At critical"
-          value={`${criticals} of ${services.length}`}
-          sub={criticals ? "listed first below" : "nothing flagged critical"}
-          tone={criticals ? "critical" : "ok"}
+          label="Diagrams"
+          value={generated ? `${generated} of ${services.length}` : "None yet"}
+          sub={
+            generated === services.length
+              ? "every service has diagrams"
+              : "generated per service — open one to start"
+          }
         />
         <Stat
           label="Citations checked"
-          value={`${verified} verified`}
-          sub={failed ? `${failed} did not match the code` : "every citation matched its file"}
-          tone={failed ? "warn" : "ok"}
+          value={verified || failed ? `${verified} verified` : "—"}
+          sub={
+            failed
+              ? `${failed} did not match the code`
+              : verified
+                ? "every citation matched its file"
+                : "checked as each service is generated"
+          }
+          tone={failed ? "warn" : undefined}
         />
       </div>
+
+      {!generated && (
+        <div className="rounded-lg border border-dashed border-[var(--line)] p-4 text-[12.5px] text-[var(--ink-soft)] leading-relaxed">
+          The scan found the services below but has not drawn anything yet — diagrams are generated one service at a
+          time so you only spend on what you actually look at. <b className="text-[var(--ink)]">Pick a service</b> to
+          generate its flow, sequence and optimisations.
+        </div>
+      )}
 
       {project.stack && (
         <p className="text-[12.5px] text-[var(--ink-soft)]">
