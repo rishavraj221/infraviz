@@ -197,14 +197,16 @@ async function cmdInit() {
 
 const CONSENT_NOTICE = `Before I analyse this repository:
 
-- infraviz runs entirely on your machine. It has no servers, no accounts and no
-  telemetry, and writes only to .infraviz/ in this repo. Nothing is sent to it.
-- I generate the results, which means parts of your code go to my provider, just
-  as with any other request you make of me. If your organisation restricts which
-  repositories may be sent to an AI provider, that applies here unchanged.
+- infraviz itself receives nothing. It is software running on your machine, with
+  no servers and no telemetry. It writes only to .infraviz/ in this repo.
+- I am the one that reads your code, and I send what I read to my own provider —
+  the same one handling this conversation. That is the relationship you already
+  have with me; infraviz adds no new recipient. It does mean I will read more
+  files than a normal question would: your routers, the modules they import, your
+  infrastructure config, and your tests.
 - The output contains verbatim snippets of your code and a ranked list of weak
   points, so treat .infraviz/ as confidential. It is gitignored by default.
-- I may run your test suite to check conclusions. Tell me not to if your tests
+- I may run your test suite to check my conclusions. Tell me not to if your tests
   reach real services.
 
 May I go ahead?`;

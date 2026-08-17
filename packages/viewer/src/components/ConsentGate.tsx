@@ -43,17 +43,22 @@ export default function ConsentGate({ repo, onAccept }: { repo?: string; onAccep
         )}
 
         <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5 flex flex-col gap-4 text-[13px] leading-relaxed">
-          <Point title="Everything stays on this machine">
-            infraviz has no servers, no accounts and no telemetry. It writes what it generates to{" "}
-            <code>.infraviz/</code> inside this repository, and sends nothing anywhere. We never receive a copy of your
-            code or your diagrams.
+          <Point title="infraviz receives nothing">
+            There is no service behind this page. infraviz is software running on your machine — no servers, no
+            accounts, no telemetry — and it makes no network requests at all. It writes only to{" "}
+            <code>.infraviz/</code> inside this repository. Not a line of your code, not a file name, reaches us,
+            because there is no us to reach.
           </Point>
 
-          <Point title="Your coding agent still uses its own provider">
-            The diagrams are produced by the agent you already use — Cursor, Claude Code or similar. That agent sends
-            parts of your code to its provider, exactly as it does for every other request you make in it. infraviz
-            does not change that behaviour and is not involved in it. If your organisation restricts which repositories
-            may be sent to an AI provider, that restriction applies here unchanged.
+          <Point title="Your coding agent is what reads your code">
+            The analysis is produced by the agent you already use — Cursor, Claude Code, Codex. It reads your files and
+            sends them to <em>its own</em> provider, exactly as it does for every other request you make of it.
+            infraviz never sees that traffic and adds no new recipient to it.
+            <br />
+            <br />
+            It does mean the agent reads more than a normal question would: your routers, the modules they import, your
+            infrastructure config and your tests. If your organisation restricts which repositories may be sent to an
+            AI provider, that restriction applies here unchanged.
           </Point>
 
           <Point title="The output is confidential">

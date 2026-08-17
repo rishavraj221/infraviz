@@ -147,17 +147,33 @@ explicit acknowledgement before anything reads your code. It is recorded per
 repository in `.infraviz/consent.json`, so a different repo asks again, and the
 run endpoint returns `403` until it exists.
 
-### What infraviz itself does
+### infraviz receives nothing
+
+There is no service behind this tool, so there is nothing for your code to be
+sent to:
 
 | | |
 |---|---|
-| Network calls from the CLI | **none** |
+| Network calls in the CLI | **none** — verified by inspecting the published package |
 | `view` server binding | `127.0.0.1` only — not reachable from your network |
 | Telemetry / analytics | none |
-| Third-party dependencies | one (`zod`) |
+| Third-party dependencies | two (`zod`, `cross-spawn`) |
 
-Nothing leaves your machine when you run `verify` or `view`. The npm download is
-the only network activity.
+The npm download is the only network activity. Not a line of your code, and not a
+file name, reaches the project's authors.
+
+### Your agent is what reads your code
+
+The analysis is produced by the coding agent you already use. It reads your files
+and sends them to **its own** provider — Anthropic, OpenAI, Cursor — exactly as it
+does for every other request you make of it. infraviz never sees that traffic and
+adds no new recipient.
+
+What it does change is *volume*: the spec asks the agent to follow imports out of
+your routers, read your infrastructure config, and run your tests. That is more of
+your repository than a typical question would touch. If your organisation
+restricts which repositories may be sent to an AI provider, that restriction
+applies here unchanged.
 
 ### The output is sensitive — more sensitive than your source
 
