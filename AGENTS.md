@@ -42,6 +42,11 @@ with a one-line verdict and nothing else.
 
 **Stop after step 1 and report.** Do not continue into step 3 on your own.
 
+**Resuming?** Run `npx infraviz status` first. It prints which services already
+have which artifacts, so you continue from where things stand instead of redoing
+work — the user may have generated some of it from the viewer UI rather than
+through you. Both paths write the same files.
+
 This matters. A whole-repo pass on a real codebase takes hours, costs real money,
 and most of the output goes unread — the user is looking at one service at a
 time. Step 1 is cheap and gives them the whole map to choose from. Wait for them

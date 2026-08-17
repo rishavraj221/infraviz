@@ -5,40 +5,58 @@ import RequestPanel from "./components/RequestPanel";
 import SequenceDiagram from "./components/SequenceDiagram";
 import Sidebar from "./components/Sidebar";
 import OverallView from "./components/OverallView";
+import StartScreen from "./components/StartScreen";
 import { useVizStore } from "./store/useVizStore";
+import { applyJobEvent } from "./useRunner";
 import type { VizData } from "./types";
 
 export default function App() {
   const [data, setData] = useState<VizData | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const activeService = useVizStore((s) => s.activeService);
 
   useEffect(() => {
-    fetch("/api/data")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d) => (d?.project ? setData(d) : setError("No .infraviz/project.json found in this directory.")))
-      .catch((e) => setError(e.message));
+    const load = () =>
+      fetch("/api/data")
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then((d) => {
+          setData(d?.project ? d : null);
+          setLoaded(true);
+        })
+        .catch((e) => {
+          setError(e.message);
+          setLoaded(true);
+        });
+    load();
+
+    // Live sync. The server watches .infraviz/, so work done in your IDE lands
+    // here without a reload — and UI-driven jobs stream progress the same way.
+    const es = new EventSource("/api/events");
+    es.onmessage = (m) => {
+      const ev = JSON.parse(m.data);
+      if (ev.type === "job") applyJobEvent(ev);
+      if (ev.type === "data-changed") load();
+    };
+    return () => es.close();
   }, []);
 
-  if (error) {
+  if (!loaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6">
-        <div className="max-w-md text-center">
-          <h1 className="text-xl font-bold mb-2">Nothing to show yet</h1>
-          <p className="text-[13px] text-[var(--ink-soft)] leading-relaxed mb-4">{error}</p>
-          <p className="text-[12px] text-[var(--ink-soft)] leading-relaxed">
-            Ask your coding agent to analyse this repository — it can get the full spec by running{" "}
-            <code>npx infraviz spec</code>. Then run <code>npx infraviz verify</code> and reload.
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-[13px] text-[var(--ink-soft)] font-mono">loading…</p>
       </div>
     );
   }
 
-  if (!data) {
+  // No project yet is a normal starting state, not an error — the UI is the
+  // entry point, so offer both ways to begin from here.
+  if (!data) return <StartScreen />;
+
+  if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-[13px] text-[var(--ink-soft)] font-mono">loading…</p>
+      <div className="min-h-screen flex items-center justify-center px-6">
+        <p className="text-[13px] text-[var(--danger)]">{error}</p>
       </div>
     );
   }

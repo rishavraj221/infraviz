@@ -8,7 +8,28 @@ No account. No app to install. No data leaves your machine.
 
 ---
 
-## Use it from your AI IDE
+## Start from the UI
+
+```bash
+npx infraviz view
+```
+
+Opens on an empty repo. From there you pick either path — **run it here** (if an
+agent CLI is on your PATH) or **copy a prompt for your IDE**. Both write the same
+files, so you can switch mid-way: scan from the UI, generate diagrams in Cursor,
+or the reverse.
+
+The page stays in sync. The server watches `.infraviz/`, so work your IDE does
+appears in an already-open tab without a reload. And `npx infraviz status` shows
+what is done and what is missing — that is how an agent resumes from wherever you
+left off:
+
+```
+● ○ ○  Chat Bots & Query-Doc Indexing   missing: topology, optimise
+○ ● ●  Risk Management Uploads          missing: sequence
+```
+
+## Or start from your AI IDE
 
 In Cursor, Claude Code, Codex — anywhere with a coding agent:
 
@@ -31,6 +52,7 @@ there's nothing to install and no second model to pay for.
 ## Or drive it yourself
 
 ```bash
+npx infraviz status     # what is generated, what is missing
 npx infraviz spec       # the workflow and prompts, to paste into any agent
 npx infraviz verify     # validate schemas and re-check every citation
 npx infraviz view       # render .infraviz/ in your browser

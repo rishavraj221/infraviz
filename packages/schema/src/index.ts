@@ -7,6 +7,18 @@
 
 import { z } from "zod";
 
+/**
+ * Optional text field that tolerates an explicit `null`.
+ *
+ * Models routinely emit `"framework": null` to mean "not applicable" rather than
+ * omitting the key. Rejecting that fails otherwise-correct output on a
+ * technicality, so normalise null to undefined instead.
+ */
+const optText = z
+  .string()
+  .nullish()
+  .transform((v) => v ?? undefined);
+
 // ---------------------------------------------------------------- primitives
 
 export const Severity = z.enum(["ok", "warn", "critical"]);
@@ -41,7 +53,7 @@ export const Finding = z
     id: z.string().min(1),
     title: z.string().min(1).max(120),
     severity: z.enum(["warn", "critical"]),
-    code: z.string().optional().describe("human-readable location, e.g. 'utils.py → save()'"),
+    code: optText.describe("human-readable location, e.g. 'utils.py → save()'"),
     breaks: z.string().min(1).describe("what actually goes wrong — one sentence"),
     fix: z.string().min(1).describe("what to do about it — one sentence"),
     edges: z.array(z.string()).default([]).describe("topology edge ids this implicates"),
@@ -62,7 +74,7 @@ export const ServiceDef = z.object({
   // one sentence, but a dense one — real verdicts run long and the content is
   // worth more than an arbitrary cap
   verdict: z.string().min(1).max(500).describe("one sentence a senior engineer would care about"),
-  tierNote: z.string().optional(),
+  tierNote: optText,
   deps: z
     .object({
       llm: z.number().int().nonnegative().optional(),
@@ -79,7 +91,7 @@ export const InfraResource = z
   .object({
     kind: z.string().min(1),
     name: z.string().min(1),
-    detail: z.string().optional(),
+    detail: optText,
   })
   .merge(Evidence.partial());
 
@@ -87,22 +99,18 @@ export const Project = z.object({
   schemaVersion: z.literal(1),
   name: z.string().min(1),
   stack: z
-    .object({
-      language: z.string().optional(),
-      framework: z.string().optional(),
-      entrypoint: z.string().optional(),
-    })
+    .object({ language: optText, framework: optText, entrypoint: optText })
     .optional(),
   infra: z
     .object({
-      summary: z.string().optional(),
+      summary: optText,
       resources: z.array(InfraResource).default([]),
     })
     .optional(),
   services: z.array(ServiceDef).default([]),
   platformFindings: z.array(Finding).default([]),
-  generatedAt: z.string().optional(),
-  generatedBy: z.string().optional().describe("e.g. 'cursor/claude-opus-5' — for provenance"),
+  generatedAt: optText,
+  generatedBy: optText.describe("e.g. 'cursor/claude-opus-5' — for provenance"),
 });
 
 // ---------------------------------------------------------------- topology
@@ -110,7 +118,7 @@ export const Project = z.object({
 export const TopoNode = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
-  sublabel: z.string().optional(),
+  sublabel: optText,
   kind: NodeKind,
   x: z.number(),
   y: z.number(),
@@ -141,10 +149,7 @@ export const Topology = z
         z.enum(["flow", "load", "ratelimit", "cost", "security", "compliance", "reliability", "optimise"])
       )
       .min(1),
-    loadNote: z
-      .string()
-      .optional()
-      .describe("REQUIRED unless real measurements exist — say it is not measured"),
+    loadNote: optText.describe("REQUIRED unless real measurements exist — say it is not measured"),
     nodes: z.array(TopoNode).min(2),
     edges: z.array(TopoEdge).min(1),
     steps: z.array(TopoStep).default([]),
@@ -231,7 +236,7 @@ export const Optimisation = z
       .describe("what NOT doing this costs right now — quantified where the code allows it"),
     gain: z.string().min(1).describe("what improves, and by roughly how much"),
     how: z.string().min(1).describe("the actual change, 1-2 sentences. Mechanism, not platitude."),
-    risk: z.string().optional().describe("what could go wrong or regress — omit if genuinely none"),
+    risk: optText.describe("what could go wrong or regress — omit if genuinely none"),
   })
   .merge(Evidence.partial());
 
@@ -240,10 +245,7 @@ export const Optimisations = z.object({
   /** ordered best-first: highest gain per unit of effort */
   items: z.array(Optimisation).default([]),
   /** state plainly when the service is already appropriate for its job */
-  note: z
-    .string()
-    .optional()
-    .describe("use this to say 'nothing worth changing' rather than inventing filler"),
+  note: optText.describe("use this to say 'nothing worth changing' rather than inventing filler"),
   _meta: z.record(z.string(), z.unknown()).optional(),
 });
 

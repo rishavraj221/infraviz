@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ServiceDef } from "../types";
+import { useRunner, type RunKind } from "../useRunner";
 
 /**
  * The bridge between this page and your agent.
@@ -47,6 +48,18 @@ export default function RequestPanel({
   has: { topology: boolean; sequence: boolean; optimise: boolean };
 }) {
   const [copied, setCopied] = useState<string | null>(null);
+  const providers = useRunner((s) => s.providers);
+  const loadProviders = useRunner((s) => s.loadProviders);
+  const run = useRunner((s) => s.run);
+  const running = useRunner((s) => s.running);
+  const log = useRunner((s) => s.log);
+  const error = useRunner((s) => s.error);
+
+  useEffect(() => {
+    loadProviders();
+  }, [loadProviders]);
+
+  const canRunHere = providers.some((p) => p.installed);
   const missing = KINDS.filter((k) => !has[k.kind]);
 
   async function copy(kind: string) {
@@ -65,23 +78,55 @@ export default function RequestPanel({
     <div className="rounded-xl border border-dashed border-[var(--line)] p-5">
       <h2 className="text-[14px] font-bold mb-1">Generate more for {service.name}</h2>
       <p className="text-[12.5px] text-[var(--ink-soft)] mb-4 max-w-2xl leading-relaxed">
-        Copy a prompt and paste it into your coding agent. Each one covers this service only, so you spend tokens on
-        what you're actually looking at.
+        Generate here, or copy a prompt for your IDE — both write the same files, so you can mix the two freely. Each
+        covers this service only, so you spend tokens on what you're actually looking at.
       </p>
+      {error && (
+        <div className="rounded-lg bg-[var(--danger-soft)] text-[var(--danger)] p-3 text-[12px] mb-3">{error}</div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {missing.map((k) => (
-          <div key={k.kind} className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3.5 flex flex-col">
-            <span className="font-semibold text-[13px] mb-1">{k.label}</span>
-            <p className="text-[11.5px] text-[var(--ink-soft)] mb-3 flex-1 leading-relaxed">{k.blurb}</p>
-            <button
-              onClick={() => copy(k.kind)}
-              className="text-[12px] font-semibold px-3 py-2 rounded-md bg-[var(--accent)] text-[var(--surface)] cursor-pointer"
-            >
-              {copied === k.kind ? "Copied ✓" : copied === "failed" ? "Copy failed" : "Copy prompt"}
-            </button>
-          </div>
-        ))}
+        {missing.map((k) => {
+          const busy = Boolean(running[`${service.id}:${k.kind}`]);
+          return (
+            <div key={k.kind} className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3.5 flex flex-col">
+              <span className="font-semibold text-[13px] mb-1">{k.label}</span>
+              <p className="text-[11.5px] text-[var(--ink-soft)] mb-3 flex-1 leading-relaxed">{k.blurb}</p>
+              <div className="flex flex-col gap-1.5">
+                {canRunHere && (
+                  <button
+                    disabled={busy}
+                    onClick={() => run(k.kind as RunKind, service.id)}
+                    className="text-[12px] font-semibold px-3 py-2 rounded-md bg-[var(--accent)] text-[var(--surface)] disabled:opacity-40 cursor-pointer"
+                  >
+                    {busy ? "Generating…" : "Generate here"}
+                  </button>
+                )}
+                <button
+                  onClick={() => copy(k.kind)}
+                  className={`text-[12px] font-semibold px-3 py-2 rounded-md cursor-pointer ${
+                    canRunHere
+                      ? "border border-[var(--line)] text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                      : "bg-[var(--accent)] text-[var(--surface)]"
+                  }`}
+                >
+                  {copied === k.kind ? "Copied ✓" : copied === "failed" ? "Copy failed" : "Copy prompt for IDE"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      {log.length > 0 && (
+        <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 max-h-[160px] overflow-y-auto">
+          {log.map((l, i) => (
+            <div key={i} className="text-[11px] font-mono text-[var(--ink-soft)] leading-relaxed">
+              {l}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

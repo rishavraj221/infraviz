@@ -32,23 +32,7 @@ const c = {
   cyan: (s) => `\x1b[36m${s}\x1b[0m`,
 };
 
-async function loadAll(root) {
-  const base = join(root, DIR);
-  if (!existsSync(join(base, "project.json"))) return null;
-  const project = JSON.parse(await readFile(join(base, "project.json"), "utf8"));
-  const services = {};
-  const svcDir = join(base, "services");
-  if (existsSync(svcDir)) {
-    for (const id of await readdir(svcDir)) {
-      services[id] = {};
-      for (const kind of ["topology", "sequence", "optimise"]) {
-        const f = join(svcDir, id, `${kind}.json`);
-        services[id][kind] = existsSync(f) ? JSON.parse(await readFile(f, "utf8")) : null;
-      }
-    }
-  }
-  return { project, services };
-}
+const { loadAll } = await import("../src/server.mjs");
 
 // ------------------------------------------------------------------ verify
 
@@ -117,48 +101,44 @@ async function cmdVerify() {
 // ------------------------------------------------------------------ view
 
 async function cmdView() {
-  const data = await loadAll(cwd);
-  if (!data) {
-    console.error(c.red(`No ${DIR}/project.json found in ${cwd}`));
-    console.error(c.dim("Nothing to view yet. Generate artifacts first — see: npx infraviz spec"));
-    process.exit(1);
-  }
-
-  const dist = resolve(here, "..", "viewer");
-  if (!existsSync(join(dist, "index.html"))) {
-    console.error(c.red("Viewer assets are missing from this install."));
-    process.exit(1);
-  }
-
+  const { startServer } = await import("../src/server.mjs");
   const port = Number(flag("port", 4173));
-  const mime = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".json": "application/json" };
+  // Deliberately does NOT require .infraviz to exist — starting from an empty
+  // viewer and driving the first scan from the UI is a supported entry point.
+  const { port: actual } = await startServer({ root: cwd, port });
+  const url = `http://127.0.0.1:${actual}`;
+  const data = await loadAll(cwd);
+  const n = data?.project?.services?.length ?? 0;
 
-  const server = createServer(async (req, res) => {
-    const url = new URL(req.url, "http://localhost");
-    if (url.pathname === "/api/data") {
-      // re-read on every request so regenerating shows up on refresh
-      const fresh = await loadAll(cwd);
-      res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify(fresh ?? {}));
-    }
-    let p = url.pathname === "/" ? "/index.html" : url.pathname;
-    let file = join(dist, p);
-    if (!file.startsWith(dist) || !existsSync(file)) file = join(dist, "index.html"); // SPA fallback
-    const ext = file.slice(file.lastIndexOf("."));
-    res.writeHead(200, { "Content-Type": mime[ext] ?? "application/octet-stream" });
-    res.end(await readFile(file));
-  });
+  console.log(`\n${c.bold("infraviz")}  ${c.dim(data?.project?.name ?? cwd)}`);
+  console.log(n ? `${n} service${n === 1 ? "" : "s"}  ·  ${c.cyan(url)}\n` : `${c.dim("nothing scanned yet")}  ·  ${c.cyan(url)}\n`);
+  if (!args.includes("--no-open")) {
+    const open = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+    spawn(open, [url], { stdio: "ignore", detached: true }).unref();
+  }
+}
 
-  server.listen(port, "127.0.0.1", () => {
-    const url = `http://127.0.0.1:${port}`;
-    const n = data.project.services?.length ?? 0;
-    console.log(`\n${c.bold("infraviz")}  ${c.dim(data.project.name ?? cwd)}`);
-    console.log(`${n} service${n === 1 ? "" : "s"}  ·  ${c.cyan(url)}\n`);
-    if (!args.includes("--no-open")) {
-      const open = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-      spawn(open, [url], { stdio: "ignore", detached: true }).unref();
-    }
-  });
+// ------------------------------------------------------------------ status
+
+async function cmdStatus() {
+  const { status } = await import("../src/server.mjs");
+  const st = await status(cwd);
+  if (!st.scanned) {
+    console.log(`\n${c.dim(cwd)}`);
+    console.log(`  not scanned yet — run the scan step, or ${c.cyan("npx infraviz view")} and start from the UI\n`);
+    return;
+  }
+  console.log(`\n${c.bold(st.name ?? cwd)}  ${c.dim(st.generatedAt ?? "")}`);
+  console.log(`  ${st.services.length} service(s)\n`);
+  const done = st.services.filter((s) => !s.missing.length).length;
+  for (const s of st.services) {
+    const marks = ["sequence", "topology", "optimise"]
+      .map((k) => (s.have.includes(k) ? c.green("●") : c.dim("○")))
+      .join(" ");
+    console.log(`  ${marks}  ${s.name}${s.missing.length ? c.dim(`  missing: ${s.missing.join(", ")}`) : ""}`);
+  }
+  console.log(`\n  ${c.dim("● sequence  ● topology  ● optimise")}`);
+  console.log(`  ${done}/${st.services.length} fully generated\n`);
 }
 
 // ------------------------------------------------------------------ init / spec
@@ -221,6 +201,7 @@ function help() {
 ${c.bold("infraviz")} — visualise your API's architecture, with every claim cited
 
   ${c.cyan("npx infraviz view")}        render ${DIR}/ in the browser
+  ${c.cyan("npx infraviz status")}      what is generated and what is missing
   ${c.cyan("npx infraviz verify")}      validate schemas and re-check every citation
   ${c.cyan("npx infraviz spec")}        print the workflow and prompts for your agent
   ${c.cyan("npx infraviz init")}        create ${DIR}/
@@ -236,5 +217,5 @@ README before committing them anywhere.
 `);
 }
 
-const commands = { view: cmdView, verify: cmdVerify, init: cmdInit, spec: cmdSpec, help, "--help": help, "-h": help };
+const commands = { view: cmdView, verify: cmdVerify, status: cmdStatus, init: cmdInit, spec: cmdSpec, help, "--help": help, "-h": help };
 await (commands[cmd] ?? (() => { console.error(c.red(`Unknown command: ${cmd}`)); help(); process.exit(1); }))();
