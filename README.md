@@ -40,6 +40,17 @@ worth knowing:
 > Wait until I confirm I have accepted the notice in the browser. Then follow
 > `npx infraviz spec` and scan this repo — stop after the scan and report.
 
+### "Scan codebase" is greyed out?
+
+That button drives an agent CLI on your machine, and none was found. Note that
+**the Cursor editor does not install `cursor-agent`** — the CLI is a separate
+download, and the same is true of Claude Code versus the Claude desktop app.
+
+Run `npx infraviz doctor` to see exactly which binaries were probed, the PATH the
+process is using, and the install command for each.
+
+You do not need any of them: the IDE path below works with nothing installed.
+
 ### Why the phrasing matters
 
 If you simply ask "visualise my system design", your agent will start reading

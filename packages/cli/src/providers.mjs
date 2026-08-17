@@ -39,6 +39,8 @@ export const PROVIDERS = {
     bin: "claude",
     tested: true,
     docs: "https://docs.claude.com/en/docs/claude-code",
+    install: "npm i -g @anthropic-ai/claude-code",
+    note: "Separate from the Claude desktop app.",
     defaultModel: "claude-opus-5",
     models: [
       { id: "claude-opus-5", label: "Opus 5", hint: "deepest reasoning" },
@@ -98,6 +100,8 @@ export const PROVIDERS = {
     bin: "codex",
     tested: false,
     docs: "https://developers.openai.com/codex/cli",
+    install: "npm i -g @openai/codex",
+    note: "Separate from the ChatGPT app.",
     defaultModel: "gpt-5.6-terra",
     models: [
       { id: "gpt-5.6-sol", label: "GPT-5.6 Sol", hint: "flagship, complex tasks" },
@@ -153,6 +157,8 @@ export const PROVIDERS = {
     bin: "cursor-agent",
     tested: false,
     docs: "https://cursor.com/docs/cli/headless",
+    install: "curl https://cursor.com/install -fsS | bash",
+    note: "The CLI is a separate install from the Cursor editor — having the editor does not put `cursor-agent` on your PATH.",
     defaultModel: "auto",
     models: [
       { id: "auto", label: "Auto", hint: "let Cursor choose" },
@@ -215,6 +221,8 @@ export async function detectAll() {
         bin: p.bin,
         tested: p.tested,
         docs: p.docs,
+        install: p.install,
+        note: p.note,
         models: p.models,
         efforts: p.efforts,
         defaultModel: p.defaultModel,

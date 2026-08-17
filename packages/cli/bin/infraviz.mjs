@@ -245,6 +245,45 @@ async function cmdConsent() {
   console.log(`${c.green("✓")} recorded for ${c.dim(cwd)}`);
 }
 
+async function cmdDoctor() {
+  const { detectAll } = await import("../src/providers.mjs");
+  const { getConsent } = await import("../src/server.mjs");
+
+  console.log(`\n${c.bold("infraviz doctor")}\n`);
+  console.log(`  node       ${process.version}`);
+  console.log(`  platform   ${process.platform} ${process.arch}`);
+  console.log(`  cwd        ${cwd}`);
+
+  const con = await getConsent(cwd);
+  console.log(`  consent    ${con.accepted ? c.green("accepted " + con.at) : c.yellow("not accepted")}`);
+
+  console.log(`\n  ${c.bold("Agent CLIs")}`);
+  const found = await detectAll();
+  for (const p of found) {
+    const mark = p.installed ? c.green("✓") : c.dim("✗");
+    console.log(`    ${mark} ${p.bin.padEnd(14)} ${p.installed ? p.version ?? "(found)" : c.dim("not on PATH")}`);
+    if (!p.installed && p.install) console.log(`        ${c.cyan(p.install)}`);
+    if (!p.installed && p.note) console.log(`        ${c.dim(p.note)}`);
+  }
+
+  if (!found.some((p) => p.installed)) {
+    // The most common cause of "Scan codebase is disabled": PATH here is not the
+    // PATH the CLI was installed into, or the editor is installed but not its CLI.
+    console.log(`\n  ${c.yellow("No agent CLI found.")} The UI's "Run it here" option needs one.`);
+    console.log(`  You can still use your IDE — that path needs nothing installed.\n`);
+    console.log(`  ${c.bold("PATH as this process sees it:")}`);
+    for (const dir of (process.env.PATH ?? "").split(process.platform === "win32" ? ";" : ":").filter(Boolean)) {
+      console.log(`    ${c.dim(dir)}`);
+    }
+    console.log(
+      `\n  If you installed one of the above, it is not in the list — open a new` +
+        `\n  terminal, or check where your package manager puts global binaries.\n`
+    );
+  } else {
+    console.log("");
+  }
+}
+
 async function cmdSpec() {
   await requireConsent("the spec");
   const spec = await import("@infraviz/spec");
@@ -267,6 +306,7 @@ ${c.bold("infraviz")} — visualise your API's architecture, with every claim ci
   ${c.cyan("npx infraviz view")}        render ${DIR}/ in the browser
   ${c.cyan("npx infraviz status")}      what is generated and what is missing
   ${c.cyan("npx infraviz verify")}      validate schemas and re-check every citation
+  ${c.cyan("npx infraviz doctor")}      check environment and detected agent CLIs
   ${c.cyan("npx infraviz consent")}     review and record consent for this repo
   ${c.cyan("npx infraviz spec")}        print the workflow and prompts (needs consent)
   ${c.cyan("npx infraviz init")}        create ${DIR}/
@@ -287,6 +327,7 @@ const commands = {
   verify: cmdVerify,
   status: cmdStatus,
   consent: cmdConsent,
+  doctor: cmdDoctor,
   init: cmdInit,
   spec: cmdSpec,
   help,

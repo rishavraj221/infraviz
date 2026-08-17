@@ -59,11 +59,35 @@ export default function StartScreen({ emptyScan = false }: { emptyScan?: boolean
           {/* path 1 — from here */}
           <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 flex flex-col">
             <h2 className="font-bold text-[14px] mb-1">Run it here</h2>
-            <p className="text-[12px] text-[var(--ink-soft)] mb-3 flex-1 leading-relaxed">
-              {installed.length
-                ? "Uses an agent CLI already on your PATH. Progress streams below."
-                : "No agent CLI found on PATH. Install Claude Code, Codex or Cursor CLI to use this path."}
-            </p>
+
+            {installed.length ? (
+              <p className="text-[12px] text-[var(--ink-soft)] mb-3 flex-1 leading-relaxed">
+                Uses an agent CLI already on your PATH. Progress streams below.
+              </p>
+            ) : (
+              // Say which binaries were looked for and how to get them — "not
+              // found" without either is a dead end, and the usual cause is
+              // having the Cursor editor but not its CLI.
+              <div className="mb-3 flex-1">
+                <p className="text-[12px] text-[var(--ink-soft)] mb-2 leading-relaxed">
+                  Unavailable — none of these were found on your PATH. Use your IDE instead, or install one:
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  {providers.map((p) => (
+                    <div key={p.id} className="text-[11px]">
+                      <code className="text-[var(--ink-soft)]">{p.bin}</code>
+                      {p.install && (
+                        <div className="font-mono text-[10px] text-[var(--accent)] mt-0.5 break-all">{p.install}</div>
+                      )}
+                      {p.note && <div className="text-[10px] text-[var(--ink-soft)] opacity-75 mt-0.5">{p.note}</div>}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10.5px] text-[var(--ink-soft)] opacity-75 mt-2">
+                  Already installed one? Run <code>npx infraviz doctor</code> to see what was probed.
+                </p>
+              </div>
+            )}
 
             {installed.length > 1 && (
               <select
@@ -105,7 +129,11 @@ export default function StartScreen({ emptyScan = false }: { emptyScan?: boolean
             </p>
             <button
               onClick={copy}
-              className="text-[13px] font-semibold px-3 py-2.5 rounded-md border border-[var(--line)] text-[var(--ink)] hover:border-[var(--accent)] cursor-pointer"
+              className={`text-[13px] font-semibold px-3 py-2.5 rounded-md cursor-pointer ${
+                installed.length
+                  ? "border border-[var(--line)] text-[var(--ink)] hover:border-[var(--accent)]"
+                  : "bg-[var(--accent)] text-[var(--surface)]"
+              }`}
             >
               {copied ? "Copied ✓" : "Copy scan prompt"}
             </button>

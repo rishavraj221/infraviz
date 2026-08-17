@@ -7,6 +7,8 @@ export interface ProviderInfo {
   installed: boolean;
   version?: string | null;
   tested: boolean;
+  install?: string;
+  note?: string;
   models: { id: string; label: string; hint?: string }[];
   efforts: string[];
   defaultModel: string;
