@@ -4,7 +4,11 @@
 // NOT a sandbox: every provider is configured to allow shell execution so the
 // analyzer can run the project's tests. See capabilities.mjs.
 
-import { spawn } from "node:child_process";
+// cross-spawn, not node:child_process — on Windows the agent CLIs are installed
+// as .cmd shims, which bare spawn() cannot execute (ENOENT). Using shell:true
+// instead would mean hand-escaping an arbitrary prompt into a command line, so
+// this is both the correct and the safer fix.
+import spawn from "cross-spawn";
 import { PROVIDERS } from "./providers.mjs";
 
 export async function runAgent({ providerId = "claude", model, effort, cwd, prompt, onEvent, signal, mcpConfigPath }) {

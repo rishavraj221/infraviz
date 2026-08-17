@@ -7,7 +7,7 @@
 
 import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join, dirname, resolve } from "node:path";
+import { join, dirname, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
@@ -22,6 +22,19 @@ const flag = (name, dflt) => {
   const i = args.indexOf(`--${name}`);
   return i !== -1 ? args[i + 1] : dflt;
 };
+
+/** `start` is a cmd.exe builtin rather than an executable, so it cannot be spawned directly. */
+function openBrowser(url) {
+  const opts = { stdio: "ignore", detached: true };
+  const child =
+    process.platform === "darwin"
+      ? spawn("open", [url], opts)
+      : process.platform === "win32"
+        ? spawn("cmd", ["/c", "start", "", url], opts)
+        : spawn("xdg-open", [url], opts);
+  child.on("error", () => {}); // no browser available is not worth failing over
+  child.unref();
+}
 
 const c = {
   dim: (s) => `\x1b[2m${s}\x1b[0m`,
@@ -150,7 +163,7 @@ async function cmdInit() {
   if (!existsSync(f)) {
     await writeFile(
       f,
-      JSON.stringify({ schemaVersion: 1, name: cwd.split("/").pop(), services: [], platformFindings: [] }, null, 2) + "\n"
+      JSON.stringify({ schemaVersion: 1, name: basename(cwd), services: [], platformFindings: [] }, null, 2) + "\n"
     );
   }
   console.log(`${c.green("✓")} created ${DIR}/`);

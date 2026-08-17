@@ -12,8 +12,21 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import spawn from "cross-spawn";
 
 const execFileAsync = promisify(execFile);
+
+/** Version probe that survives Windows .cmd shims. */
+function probeVersion(bin) {
+  return new Promise((resolve) => {
+    const child = spawn(bin, ["--version"], { stdio: ["ignore", "pipe", "ignore"] });
+    let out = "";
+    const timer = setTimeout(() => child.kill(), 8000);
+    child.stdout?.on("data", (d) => (out += d.toString()));
+    child.on("error", () => (clearTimeout(timer), resolve(null)));
+    child.on("close", () => (clearTimeout(timer), resolve(out.trim().split("\n")[0] || null)));
+  });
+}
 
 /** Common tool policy expressed per-provider in each adapter's own vocabulary. */
 const CLAUDE_TOOLS = ["Read", "Grep", "Glob", "Bash", "Task", "TodoWrite", "WebSearch", "WebFetch"];
@@ -188,13 +201,7 @@ export async function detectProvider(p) {
   } catch {
     return { installed: false };
   }
-  let version = null;
-  try {
-    const { stdout } = await execFileAsync(p.bin, ["--version"], { timeout: 8000 });
-    version = stdout.trim().split("\n")[0] || null;
-  } catch {
-    /* present but no --version; still usable */
-  }
+  const version = await probeVersion(p.bin);
   return { installed: true, version };
 }
 

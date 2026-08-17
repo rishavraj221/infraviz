@@ -13,7 +13,8 @@
 
 import { readFile, mkdir, writeFile, readdir } from "node:fs/promises";
 import { existsSync, watch } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve, dirname, relative, isAbsolute } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { runAgent } from "./runner.mjs";
@@ -102,7 +103,9 @@ export async function startServer({ root, port, onReady }) {
     debounce = setTimeout(() => broadcast({ type: "data-changed" }), 300);
   });
 
-  const viewerDist = resolve(dirname(new URL(import.meta.url).pathname), "..", "viewer");
+  // fileURLToPath, not URL.pathname: on Windows the latter yields "/C:/..." with a
+  // leading slash, which is not a valid path — the viewer assets are never found.
+  const viewerDist = resolve(dirname(fileURLToPath(import.meta.url)), "..", "viewer");
   const mime = {
     ".html": "text/html",
     ".js": "text/javascript",
@@ -191,8 +194,13 @@ export async function startServer({ root, port, onReady }) {
     }
 
     // ---- static viewer
-    let file = join(viewerDist, p === "/" ? "/index.html" : p);
-    if (!file.startsWith(viewerDist) || !existsSync(file)) file = join(viewerDist, "index.html");
+    //
+    // Resolve then compare with relative(), rather than a startsWith() prefix
+    // check: on Windows a decoded backslash in the URL can traverse out of the
+    // asset directory in ways a string prefix test does not catch.
+    let file = resolve(viewerDist, "." + decodeURIComponent(p === "/" ? "/index.html" : p));
+    const rel = relative(viewerDist, file);
+    if (rel.startsWith("..") || isAbsolute(rel) || !existsSync(file)) file = join(viewerDist, "index.html");
     const ext = file.slice(file.lastIndexOf("."));
     res.writeHead(200, { "Content-Type": mime[ext] ?? "application/octet-stream" });
     res.end(await readFile(file));
