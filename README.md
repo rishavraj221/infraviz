@@ -36,20 +36,33 @@ npx infraviz init       # create .infraviz/
 ### Running from a clone
 
 **Not yet published to npm**, so `npx infraviz` will not resolve until it is.
-Until then, run it from a clone:
+Until then, clone and build once:
 
 ```bash
-git clone https://github.com/rishavraj221/infraviz && cd infraviz
-npm install && npm run build
-npm link -w infraviz          # puts `infraviz` on your PATH
+git clone https://github.com/rishavraj221/infraviz ~/infraviz
+cd ~/infraviz && npm install && npm run build
+```
 
+Then run it against any repo by path — no `npm link`, no `sudo`, nothing on your
+PATH to manage:
+
+```bash
 cd /path/to/your-api
-infraviz verify
+node ~/infraviz/packages/cli/bin/infraviz.mjs verify
+node ~/infraviz/packages/cli/bin/infraviz.mjs view
+```
+
+An alias makes it feel native:
+
+```bash
+echo "alias infraviz='node ~/infraviz/packages/cli/bin/infraviz.mjs'" >> ~/.zshrc
+source ~/.zshrc
 infraviz view
 ```
 
-Everything in this README works the same way once linked — substitute `infraviz`
-for `npx infraviz`.
+> `npm link` is deliberately not recommended: on most macOS installs the global
+> npm prefix is `/usr/local`, which needs root, and a visualisation tool has no
+> business asking for `sudo`.
 
 ---
 
