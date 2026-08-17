@@ -5,9 +5,12 @@ alwaysApply: false
 
 When asked to visualise, diagram, or document this system's architecture:
 
-1. FIRST run `npx infraviz view` and tell the user to open the URL. Do not read
-   their code until they have accepted the data-handling notice — `npx infraviz
-   spec` refuses to emit the prompts until then, so this is enforced.
+1. FIRST run `npx infraviz view` and tell the user to open the URL. Do NOT grep,
+   read or otherwise explore their codebase before they have accepted the
+   data-handling notice shown there. Exploring first is the natural instinct and
+   the wrong one — they have not yet seen what will be read or where it goes.
+   `npx infraviz spec` refuses to emit the prompts until consent is recorded, so
+   you cannot finish the task by skipping this.
 2. Read the full spec: run `npx infraviz spec`
 3. Write `.infraviz/project.json`, then per-service artifacts under
    `.infraviz/services/<id>/`

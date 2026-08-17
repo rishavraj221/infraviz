@@ -49,8 +49,13 @@ with a one-line verdict and nothing else.
 
 `npx infraviz spec` **refuses to print the prompts** until consent is recorded for
 the repository, and exits non-zero with the disclaimer text for you to show. You
-cannot complete this task without going through it, so do not try to work around
-it by improvising the schema from this file.
+cannot complete this task without going through it, so do not improvise the schema
+from this file to avoid it.
+
+**Do this before you explore, not after.** Reaching for the codebase first is the
+natural instinct and it is the wrong one here: the user has not yet seen what this
+will read or where it goes. The gate cannot stop you reading their files — only
+you can. Start the viewer, get their answer, then look at code.
 
 ### Step 0 — do this before reading any code
 

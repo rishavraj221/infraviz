@@ -33,64 +33,33 @@ left off:
 
 ## Or start from your AI IDE
 
-In Cursor, Claude Code, Codex — anywhere with a coding agent:
+Paste this as your **first message** — the wording matters, and the reason is
+worth knowing:
 
-> Visualise the system design of this API. Follow the spec at
-> `github.com/rishavraj221/infraviz` — run `npx infraviz spec` for the exact format.
+> Before reading any of my code, run `npx infraviz view` and give me the URL.
+> Wait until I confirm I have accepted the notice in the browser. Then follow
+> `npx infraviz spec` and scan this repo — stop after the scan and report.
 
-The agent scans the repo, writes `.infraviz/project.json`, and stops. Then:
+### Why the phrasing matters
 
-```bash
-npx infraviz view
+If you simply ask "visualise my system design", your agent will start reading
+your codebase immediately. That is the correct instinct for a coding agent and
+**infraviz cannot prevent it** — the agent already has access to your files, and
+no third-party package can gate its built-in file tools. Neither `AGENTS.md` nor
+an MCP server changes that.
+
+What infraviz *can* do is refuse to hand over the prompts until you have
+acknowledged the data-handling notice, so the analysis proper cannot proceed
+without you:
+
+```
+$ npx infraviz spec scan
+Consent has not been recorded for this repository, so the spec is unavailable.
 ```
 
-Pick a service, and the page hands you a ready-made prompt to generate its
-diagrams. **Analysis is incremental by design** — one service at a time, so you
-never pay for a whole-repo pass whose output you won't read.
-
-That's the whole loop. The agent doing the work is the one you already have, so
-there's nothing to install and no second model to pay for.
-
-## Or drive it yourself
-
-```bash
-npx infraviz status     # what is generated, what is missing
-npx infraviz spec       # the workflow and prompts, to paste into any agent
-npx infraviz verify     # validate schemas and re-check every citation
-npx infraviz view       # render .infraviz/ in your browser
-npx infraviz init       # create .infraviz/
-```
-
-### Running from a clone
-
-**Not yet published to npm**, so `npx infraviz` will not resolve until it is.
-Until then, clone and build once:
-
-```bash
-git clone https://github.com/rishavraj221/infraviz ~/infraviz
-cd ~/infraviz && npm install && npm run build
-```
-
-Then run it against any repo by path — no `npm link`, no `sudo`, nothing on your
-PATH to manage:
-
-```bash
-cd /path/to/your-api
-node ~/infraviz/packages/cli/bin/infraviz.mjs verify
-node ~/infraviz/packages/cli/bin/infraviz.mjs view
-```
-
-An alias makes it feel native:
-
-```bash
-echo "alias infraviz='node ~/infraviz/packages/cli/bin/infraviz.mjs'" >> ~/.zshrc
-source ~/.zshrc
-infraviz view
-```
-
-> `npm link` is deliberately not recommended: on most macOS installs the global
-> npm prefix is `/usr/local`, which needs root, and a visualisation tool has no
-> business asking for `sudo`.
+But the broad reading happens earlier than that. If you want nothing touched
+before you have read the notice, put it in your first message — that is the only
+instruction with enough weight, and it works.
 
 ---
 
