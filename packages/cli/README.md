@@ -40,6 +40,20 @@ worth knowing:
 > Wait until I confirm I have accepted the notice in the browser. Then follow
 > `npx infraviz spec` and scan this repo — stop after the scan and report.
 
+### The viewer did not open
+
+The URL is printed either way — open it manually. If the automatic launch fails
+you will see:
+
+```
+infraviz  /path/to/your-repo
+nothing scanned yet  ·  http://127.0.0.1:4173
+
+  (could not open a browser automatically — open the URL above)
+```
+
+The server keeps running regardless. `--no-open` skips the attempt entirely.
+
 ### "Scan codebase" is greyed out?
 
 That button drives an agent CLI on your machine, and none was found. Note that

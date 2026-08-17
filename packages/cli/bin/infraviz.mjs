@@ -25,16 +25,26 @@ const flag = (name, dflt) => {
 };
 
 /** `start` is a cmd.exe builtin rather than an executable, so it cannot be spawned directly. */
+/**
+ * Best-effort browser launch. Never allowed to take the server down with it:
+ * `start` is a cmd.exe builtin rather than an executable, so spawning it
+ * directly throws ENOENT on Windows — and an unhandled error event there killed
+ * the viewer before anyone could open the URL.
+ */
 function openBrowser(url) {
   const opts = { stdio: "ignore", detached: true };
-  const child =
-    process.platform === "darwin"
-      ? spawn("open", [url], opts)
-      : process.platform === "win32"
-        ? spawn("cmd", ["/c", "start", "", url], opts)
-        : spawn("xdg-open", [url], opts);
-  child.on("error", () => {}); // no browser available is not worth failing over
-  child.unref();
+  try {
+    const child =
+      process.platform === "darwin"
+        ? spawn("open", [url], opts)
+        : process.platform === "win32"
+          ? spawn("cmd", ["/c", "start", "", url], opts)
+          : spawn("xdg-open", [url], opts);
+    child.on("error", () => console.log(c.dim("  (could not open a browser automatically — open the URL above)")));
+    child.unref();
+  } catch {
+    console.log(c.dim("  (could not open a browser automatically — open the URL above)"));
+  }
 }
 
 const c = {
@@ -126,10 +136,7 @@ async function cmdView() {
 
   console.log(`\n${c.bold("infraviz")}  ${c.dim(data?.project?.name ?? cwd)}`);
   console.log(n ? `${n} service${n === 1 ? "" : "s"}  ·  ${c.cyan(url)}\n` : `${c.dim("nothing scanned yet")}  ·  ${c.cyan(url)}\n`);
-  if (!args.includes("--no-open")) {
-    const open = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-    spawn(open, [url], { stdio: "ignore", detached: true }).unref();
-  }
+  if (!args.includes("--no-open")) openBrowser(url);
 }
 
 // ------------------------------------------------------------------ status
