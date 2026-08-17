@@ -130,7 +130,7 @@ Verify with: npx infraviz verify`}
                   />
                   <ReactFlowProvider key={activeService}>
                     {sequence && <SequenceDiagram seq={sequence} />}
-                    {topology && <DiagramCard topology={topology} optimise={art?.optimise ?? null} />}
+                    {topology && <DiagramCard topology={topology} optimise={art?.optimise ?? null} service={service!} />}
                   </ReactFlowProvider>
                 </>
               )}

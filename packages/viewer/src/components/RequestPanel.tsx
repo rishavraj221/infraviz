@@ -24,7 +24,7 @@ const KINDS = [
   {
     kind: "optimise" as const,
     label: "Optimisations",
-    blurb: "What to improve, what it costs you today, what you gain.",
+    blurb: "Ranked improvements you can hand straight to your agent to implement.",
   },
 ];
 
@@ -76,7 +76,7 @@ export default function RequestPanel({
 
   return (
     <div className="rounded-xl border border-dashed border-[var(--line)] p-5">
-      <h2 className="text-[14px] font-bold mb-1">Generate more for {service.name}</h2>
+      <h2 className="text-[14px] font-bold mb-1">Not generated yet for {service.name}</h2>
       <p className="text-[12.5px] text-[var(--ink-soft)] mb-4 max-w-2xl leading-relaxed">
         Generate here, or copy a prompt for your IDE — both write the same files, so you can mix the two freely. Each
         covers this service only, so you spend tokens on what you're actually looking at.

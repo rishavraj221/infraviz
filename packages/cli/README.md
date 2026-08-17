@@ -223,7 +223,12 @@ before pointing it at anything confidential.
 | **Security** | Findings anchored to the hop they affect, in severity colour |
 | **Compliance** | Data handling, retention, egress |
 | **Reliability** | Compounding failure across dependencies. Drag the fan-out slider and watch end-to-end success collapse |
-| **Optimise** | Ranked improvements: what each one costs you *today*, what you *gain*, effort, and the mechanism |
+| **Optimise** | Ranked improvements: what each costs you *today*, what you *gain*, effort, and the mechanism — each copyable as a task for your agent to implement |
+
+The Optimise lens closes the loop: **Copy as task** turns any item into an
+implementation brief — the location, the mechanism, and the specific gotcha to
+avoid — that you paste straight into your agent. Or copy the whole ranked list at
+once and work through it in order.
 
 Plus a **sequence diagram** per service, auto-laid-out — including work that
 continues *after* the HTTP response, which is where the interesting failure modes

@@ -13,7 +13,7 @@ import {
 import ServiceNode, { type ServiceNodeData } from "./nodes/ServiceNode";
 import FloatingEdge from "./edges/FloatingEdge";
 import { useVizStore, type Tab } from "../store/useVizStore";
-import type { Topology, Finding, Optimisations } from "../types";
+import type { Topology, Finding, Optimisations, ServiceDef } from "../types";
 import OptimiseLens from "./OptimiseLens";
 
 const nodeTypes = { service: ServiceNode };
@@ -41,9 +41,11 @@ function buildEdgeStepMap(topo: Topology): Record<string, string[]> {
 export default function DiagramCard({
   topology,
   optimise,
+  service,
 }: {
   topology: Topology;
   optimise?: Optimisations | null;
+  service: ServiceDef;
 }) {
   const activeTab = useVizStore((s) => s.activeTab);
   const setActiveTab = useVizStore((s) => s.setActiveTab);
@@ -223,7 +225,7 @@ export default function DiagramCard({
 
       {activeTab === "optimise" && optimise && (
         <div className="mt-4 pt-4 border-t border-[var(--line)]">
-          <OptimiseLens data={optimise} />
+          <OptimiseLens data={optimise} service={service} />
         </div>
       )}
 

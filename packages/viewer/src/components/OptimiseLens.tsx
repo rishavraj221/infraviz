@@ -1,4 +1,58 @@
-import type { Optimisations, Optimisation } from "../types";
+import { useState } from "react";
+import type { Optimisations, Optimisation, ServiceDef } from "../types";
+
+/**
+ * Turns a finding into an implementation brief. The point of this lens is not to
+ * be read and admired — it is to be handed to an agent that does the work, so
+ * every item carries the location, the mechanism, and the risk to watch for.
+ */
+function taskFor(o: Optimisation, service: ServiceDef) {
+  return [
+    `Implement this optimisation in the "${service.name}" service.`,
+    ``,
+    `## ${o.title}`,
+    ``,
+    `Why it matters: ${o.costsToday}`,
+    `Expected gain:  ${o.gain}`,
+    `How:            ${o.how}`,
+    o.risk ? `Watch out for:  ${o.risk}` : null,
+    o.file ? `Location:       ${o.file}${o.line ? `:${o.line}` : ""}` : null,
+    `Router:         ${service.router}`,
+    ``,
+    `Make only this change — do not refactor beyond it. Run the test suite if one`,
+    `exists, then tell me exactly what you changed and anything you chose not to.`,
+  ]
+    .filter((l) => l !== null)
+    .join("\n");
+}
+
+function allTasks(items: Optimisation[], service: ServiceDef) {
+  const body = items
+    .map((o, i) =>
+      [
+        `### ${i + 1}. ${o.title}  [${o.effort} effort]`,
+        `Why:  ${o.costsToday}`,
+        `Gain: ${o.gain}`,
+        `How:  ${o.how}`,
+        o.risk ? `Risk: ${o.risk}` : null,
+        o.file ? `File: ${o.file}${o.line ? `:${o.line}` : ""}` : null,
+      ]
+        .filter((l) => l !== null)
+        .join("\n")
+    )
+    .join("\n\n");
+
+  return [
+    `Implement these ${items.length} optimisations in the "${service.name}" service`,
+    `(${service.router}). They are ordered best-first by gain per unit of effort.`,
+    ``,
+    body,
+    ``,
+    `Work through them in order. After each one, stop and tell me what changed so I`,
+    `can review before you continue. Run the test suite if one exists. Do not`,
+    `refactor beyond what each item describes.`,
+  ].join("\n");
+}
 
 // Effort is the denominator of "is this worth it", so it gets the strongest
 // visual weight after the title.
@@ -17,8 +71,19 @@ const DIM_LABEL: Record<string, string> = {
   security: "security",
 };
 
-export default function OptimiseLens({ data }: { data: Optimisations }) {
+export default function OptimiseLens({ data, service }: { data: Optimisations; service: ServiceDef }) {
   const items = data.items ?? [];
+  const [copied, setCopied] = useState<string | null>(null);
+
+  async function copy(key: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      setCopied("failed");
+    }
+  }
 
   if (!items.length) {
     return (
@@ -34,9 +99,17 @@ export default function OptimiseLens({ data }: { data: Optimisations }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[12px] text-[var(--ink-soft)]">
-        Ordered best-first by gain per unit of effort. Stop reading whenever the effort stops being worth the gain.
-      </p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <p className="text-[12px] text-[var(--ink-soft)] flex-1 min-w-[260px]">
+          Ordered best-first by gain per unit of effort. Stop reading whenever the effort stops being worth the gain.
+        </p>
+        <button
+          onClick={() => copy("all", allTasks(items, service))}
+          className="text-[12px] font-semibold px-3 py-1.5 rounded-md bg-[var(--accent)] text-[var(--surface)] cursor-pointer whitespace-nowrap"
+        >
+          {copied === "all" ? "Copied ✓" : `Copy all ${items.length} as tasks`}
+        </button>
+      </div>
 
       {items.map((it: Optimisation, i: number) => {
         const ef = EFFORT[it.effort] ?? EFFORT.medium;
@@ -96,6 +169,14 @@ export default function OptimiseLens({ data }: { data: Optimisations }) {
                   </span>
                 ))}
               </div>
+              <button
+                onClick={() => copy(it.id, taskFor(it, service))}
+                className="text-[11px] font-semibold px-2 py-1 rounded-md border border-[var(--line)] text-[var(--ink-soft)] hover:border-[var(--accent)] hover:text-[var(--accent)] cursor-pointer"
+                title="Copy this as an implementation task for your coding agent"
+              >
+                {copied === it.id ? "Copied ✓" : "Copy as task"}
+              </button>
+
               {it.file && (
                 <span className="text-[10.5px] font-mono text-[var(--ink-soft)] ml-auto">
                   <code>
