@@ -28,14 +28,27 @@ const KINDS = ["topology", "sequence", "optimise"];
 // materially change, and prior acceptances stop counting.
 export const CONSENT_VERSION = 1;
 
+/**
+ * Consent must come from a human, so provenance is part of the record.
+ *
+ * Only two routes count: a click in the viewer ("ui") or a typed confirmation at
+ * an interactive terminal ("tty"). A file that appears by any other means — an
+ * agent writing it directly, or a copied record — is treated as NOT accepted.
+ * Without this an agent simply grants consent on the user's behalf, which is
+ * exactly what happened when the CLI advertised an --accept flag to it.
+ */
+const HUMAN_ROUTES = new Set(["ui", "tty"]);
+
 export async function getConsent(root) {
   const f = join(root, DIR, "consent.json");
   if (!existsSync(f)) return { accepted: false };
   try {
     const c = JSON.parse(await readFile(f, "utf8"));
-    return c.version === CONSENT_VERSION && c.accepted
-      ? { accepted: true, at: c.at }
-      : { accepted: false, staleVersion: c.version };
+    if (c.version !== CONSENT_VERSION || !c.accepted) return { accepted: false, staleVersion: c.version };
+    if (!HUMAN_ROUTES.has(c.via)) {
+      return { accepted: false, reason: "recorded without a human confirmation — re-accepting is required" };
+    }
+    return { accepted: true, at: c.at, via: c.via };
   } catch {
     return { accepted: false };
   }
@@ -142,7 +155,7 @@ export async function startServer({ root, port, onReady }) {
         const body = await readBody(req);
         if (!body.accepted) return json(res, 400, { error: "not accepted" });
         await mkdir(join(root, DIR), { recursive: true });
-        const record = { version: CONSENT_VERSION, accepted: true, at: new Date().toISOString(), root };
+        const record = { version: CONSENT_VERSION, accepted: true, via: "ui", at: new Date().toISOString(), root };
         await writeFile(join(root, DIR, "consent.json"), JSON.stringify(record, null, 2) + "\n");
         return json(res, 200, { accepted: true, at: record.at });
       }

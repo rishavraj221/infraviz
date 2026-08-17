@@ -74,8 +74,16 @@ Two reasons this matters:
    in seconds tells the user it is working and lets them choose what to spend
    time on, instead of waiting with nothing on screen.
 
-Record acceptance with `npx infraviz consent --accept` once the user agrees, or
-have them accept in the viewer. Then `npx infraviz spec` works.
+**You cannot record this yourself.** Acceptance only counts when it comes from a
+person: a click in the viewer, or a typed confirmation at an interactive terminal.
+Running `consent --accept` in a pipe is refused, and writing `consent.json`
+yourself does not count — the gate stays closed either way.
+
+So: start the viewer, show the user the notice, and wait for them to tell you they
+have accepted. Then `npx infraviz spec` works.
+
+Do not tell the user to "accept the notice" without first showing them what they
+are accepting — they should be able to decide from your message alone.
 
 If you cannot run commands, state the disclaimer in chat yourself and ask the
 user to confirm before continuing:

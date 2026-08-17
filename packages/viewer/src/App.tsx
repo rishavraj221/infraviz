@@ -13,7 +13,7 @@ import type { VizData } from "./types";
 
 export default function App() {
   const [data, setData] = useState<VizData | null>(null);
-  const [consent, setConsent] = useState<{ accepted: boolean } | null>(null);
+  const [consent, setConsent] = useState<{ accepted: boolean; reason?: string } | null>(null);
   const [repo, setRepo] = useState<string | undefined>();
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +62,9 @@ export default function App() {
 
   // Consent first, always. The server enforces the same gate, so this is not
   // merely cosmetic — nothing reads the codebase until it is recorded.
-  if (!consent.accepted) return <ConsentGate repo={repo} onAccept={() => setConsent({ accepted: true })} />;
+  if (!consent.accepted) {
+    return <ConsentGate repo={repo} reason={consent.reason} onAccept={() => setConsent({ accepted: true })} />;
+  }
 
   // A scan that found nothing is not a dashboard of zeros. Either it has not run
   // or it failed to identify services — both are "start here" states, not results.

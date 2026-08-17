@@ -10,7 +10,9 @@ When asked to visualise, diagram, or document this system's architecture:
    data-handling notice shown there. Exploring first is the natural instinct and
    the wrong one — they have not yet seen what will be read or where it goes.
    `npx infraviz spec` refuses to emit the prompts until consent is recorded, so
-   you cannot finish the task by skipping this.
+   you cannot finish the task by skipping this. You also cannot record consent
+   yourself — only a human click in the viewer or a typed terminal confirmation
+   counts. Show them the notice, then wait.
 2. Read the full spec: run `npx infraviz spec`
 3. Write `.infraviz/project.json`, then per-service artifacts under
    `.infraviz/services/<id>/`

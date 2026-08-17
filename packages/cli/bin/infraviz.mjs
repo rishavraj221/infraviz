@@ -10,6 +10,7 @@ import { existsSync } from "node:fs";
 import { join, dirname, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
+import { createInterface } from "node:readline";
 import { spawn } from "node:child_process";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -217,12 +218,13 @@ async function requireConsent(action) {
   if (con.accepted) return true;
 
   console.error(c.yellow(`\nConsent has not been recorded for this repository, so ${action} is unavailable.\n`));
-  console.error("If you are an agent: show the user the following, wait for a clear yes,");
-  console.error(`then run ${c.cyan("npx infraviz consent --accept")}. Do not read their code before that.\n`);
+  console.error("If you are an agent: you CANNOT grant this. Show the user the text below,");
+  console.error(`then ask them to accept in the viewer (${c.cyan("npx infraviz view")}).`);
+  console.error("Do not read their code before they confirm they have done it.\n");
   console.error(c.dim("─".repeat(70)));
   console.error(CONSENT_NOTICE);
   console.error(c.dim("─".repeat(70)));
-  console.error(`\nOr have the user accept in the UI: ${c.cyan("npx infraviz view")}\n`);
+  console.error(`\nThe user accepts in the viewer, or interactively via ${c.cyan("npx infraviz consent")}.\n`);
   process.exit(2);
 }
 
@@ -233,16 +235,28 @@ async function cmdConsent() {
     console.log(con.accepted ? c.green(`accepted ${con.at}`) : c.yellow("not accepted"));
     return;
   }
-  if (!args.includes("--accept")) {
-    console.log(`\n${CONSENT_NOTICE}\n`);
-    console.log(`To record acceptance: ${c.cyan("npx infraviz consent --accept")}`);
-    console.log(c.dim("Only the person whose code this is should run that.\n"));
+  console.log(`\n${CONSENT_NOTICE}\n`);
+
+  // No non-interactive path, deliberately. An agent running this in a pipe gets
+  // refused rather than accepting on the user's behalf.
+  if (!process.stdin.isTTY) {
+    console.error(c.yellow("This needs an interactive terminal, so that a person answers it."));
+    console.error(`Accept in the viewer instead: ${c.cyan("npx infraviz view")}\n`);
+    process.exit(2);
+  }
+
+  const answer = await new Promise((r) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(`Type ${c.bold("yes")} to accept for ${cwd}: `, (a) => (rl.close(), r(a.trim().toLowerCase())));
+  });
+  if (answer !== "yes") {
+    console.log(c.dim("\nNot accepted.\n"));
     return;
   }
   await mkdir(join(cwd, D), { recursive: true });
-  const rec = { version: CONSENT_VERSION, accepted: true, at: new Date().toISOString(), root: cwd };
+  const rec = { version: CONSENT_VERSION, accepted: true, via: "tty", at: new Date().toISOString(), root: cwd };
   await writeFile(join(cwd, D, "consent.json"), JSON.stringify(rec, null, 2) + "\n");
-  console.log(`${c.green("✓")} recorded for ${c.dim(cwd)}`);
+  console.log(`${c.green("✓")} recorded for ${c.dim(cwd)}\n`);
 }
 
 async function cmdDoctor() {

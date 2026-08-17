@@ -10,7 +10,15 @@ import { useState } from "react";
  * sends nothing, but the agent generating the diagrams sends code to its own
  * provider. A disclaimer that overstates privacy is worse than none.
  */
-export default function ConsentGate({ repo, onAccept }: { repo?: string; onAccept: () => void }) {
+export default function ConsentGate({
+  repo,
+  reason,
+  onAccept,
+}: {
+  repo?: string;
+  reason?: string;
+  onAccept: () => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +48,13 @@ export default function ConsentGate({ repo, onAccept }: { repo?: string; onAccep
           <p className="font-mono text-[11.5px] text-[var(--ink-soft)] mb-5 truncate" title={repo}>
             {repo}
           </p>
+        )}
+
+        {reason && (
+          <div className="rounded-lg bg-[var(--warn-soft)] text-[var(--warn)] p-3.5 text-[12.5px] mb-4 leading-relaxed">
+            <b>An earlier acceptance was not counted.</b> {reason} Acceptance has to come from you, not from an agent
+            acting on your behalf, so please confirm below.
+          </div>
         )}
 
         <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5 flex flex-col gap-4 text-[13px] leading-relaxed">
