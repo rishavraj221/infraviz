@@ -13,8 +13,9 @@ import {
 import ServiceNode, { type ServiceNodeData } from "./nodes/ServiceNode";
 import FloatingEdge from "./edges/FloatingEdge";
 import { useVizStore, type Tab } from "../store/useVizStore";
-import type { Topology, Finding, Optimisations, ServiceDef } from "../types";
+import type { Topology, Finding, Optimisations, Deployment, ServiceDef } from "../types";
 import OptimiseLens from "./OptimiseLens";
+import DeploymentLens from "./DeploymentLens";
 
 const nodeTypes = { service: ServiceNode };
 const edgeTypes = { floating: FloatingEdge };
@@ -29,6 +30,7 @@ const TABS: [Tab, string][] = [
   ["compliance", "Compliance"],
   ["reliability", "Reliability"],
   ["optimise", "Optimise"],
+  ["deployment", "Deployment"],
 ];
 const RISK: Tab[] = ["security", "compliance", "reliability"];
 
@@ -41,10 +43,12 @@ function buildEdgeStepMap(topo: Topology): Record<string, string[]> {
 export default function DiagramCard({
   topology,
   optimise,
+  deployment,
   service,
 }: {
   topology: Topology;
   optimise?: Optimisations | null;
+  deployment?: Deployment | null;
   service: ServiceDef;
 }) {
   const activeTab = useVizStore((s) => s.activeTab);
@@ -58,8 +62,10 @@ export default function DiagramCard({
   const fanOutUnits = useVizStore((s) => s.fanOutUnits);
   const setFanOutUnits = useVizStore((s) => s.setFanOutUnits);
 
+  // artifact-backed lenses appear only when their artifact exists; the rest come
+  // from what the topology says it can support
   const available = TABS.filter(([k]) =>
-    k === "optimise" ? Boolean(optimise) : topology.lenses.includes(k)
+    k === "optimise" ? Boolean(optimise) : k === "deployment" ? Boolean(deployment) : topology.lenses.includes(k)
   );
   const tabFindings: Finding[] | undefined = RISK.includes(activeTab)
     ? topology.risk[activeTab as "security" | "compliance" | "reliability"]
@@ -226,6 +232,12 @@ export default function DiagramCard({
       {activeTab === "optimise" && optimise && (
         <div className="mt-4 pt-4 border-t border-[var(--line)]">
           <OptimiseLens data={optimise} service={service} />
+        </div>
+      )}
+
+      {activeTab === "deployment" && deployment && (
+        <div className="mt-4 pt-4 border-t border-[var(--line)]">
+          <DeploymentLens data={deployment} service={service} />
         </div>
       )}
 

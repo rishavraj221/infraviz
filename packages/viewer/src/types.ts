@@ -132,6 +132,49 @@ export interface Optimisations {
   _meta?: Record<string, unknown>;
 }
 
+export interface Observation {
+  connector?: "aws" | "openshift" | "kubernetes" | "manual";
+  command?: string;
+  observedAt?: string;
+}
+
+export interface Workload extends Observation {
+  name: string;
+  kind?: string;
+  replicas?: number;
+  cpu?: string;
+  memory?: string;
+  utilisation?: string;
+  scaling?: string;
+}
+
+export interface CostLine extends Observation {
+  label: string;
+  amount: number;
+  currency?: string;
+  period: string;
+  basis: "actual" | "estimated";
+}
+
+export interface Deployment {
+  schemaVersion: 1;
+  platform: string;
+  summary: string;
+  environment?: string;
+  workloads?: Workload[];
+  cost?: CostLine[];
+  observability?: {
+    metrics?: string;
+    logs?: string;
+    alerts?: string;
+    tracing?: string;
+    gaps?: string[];
+  };
+  recommendations?: Optimisation[];
+  notes?: string;
+  _meta?: Record<string, unknown>;
+}
+
 export interface Progress {
   startedAt?: string;
   updatedAt?: string;
@@ -145,7 +188,7 @@ export interface VizData {
   project: Project;
   services: Record<
     string,
-    { topology: Topology | null; sequence: Sequence | null; optimise: Optimisations | null; deployment: unknown | null }
+    { topology: Topology | null; sequence: Sequence | null; optimise: Optimisations | null; deployment: Deployment | null }
   >;
   progress?: Progress | null;
 }

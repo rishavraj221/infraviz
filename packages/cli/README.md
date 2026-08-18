@@ -236,6 +236,7 @@ before pointing it at anything confidential.
 | **Security** | Findings anchored to the hop they affect, in severity colour |
 | **Compliance** | Data handling, retention, egress |
 | **Reliability** | Compounding failure across dependencies. Drag the fan-out slider and watch end-to-end success collapse |
+| **Deployment** | What is actually running and what it actually costs — provisioned against observed, real billing figures, and the monitoring gaps that would hurt during an incident |
 | **Optimise** | Ranked improvements: what each costs you *today*, what you *gain*, effort, and the mechanism — each copyable as a task for your agent to implement |
 
 The Optimise lens closes the loop: **Copy as task** turns any item into an
@@ -251,6 +252,29 @@ Depth is tiered on purpose. A 25-line router gets a one-line verdict, not five
 lenses of padding.
 
 ---
+
+## Cloud connectors
+
+Point it at a running deployment and the picture stops being theoretical: real
+sizes, real utilisation, a real bill.
+
+```bash
+npx infraviz connect          # what is authenticated
+```
+
+Two things are structural, not promises:
+
+- **We never take credentials.** No token field, nothing stored. Connectors use
+  the `aws` / `oc` / `kubectl` session you already have. If you are not logged in,
+  we print the command for *you* to run.
+- **Read-only, judged by verb.** Any service, any resource — but the action must
+  only look. `describe`, `list`, `get` and friends pass; anything that creates,
+  modifies, scales or deletes is refused. We do not enumerate which commands are
+  interesting: your agent knows your platform and picks its own.
+
+The guard binds commands routed through `infraviz connect run`. An agent with its
+own shell can call the cloud CLIs directly, so treat it as a safety net for the
+guided path rather than containment.
 
 ## Packages
 

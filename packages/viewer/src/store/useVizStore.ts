@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type Tab = "flow" | "load" | "ratelimit" | "cost" | "security" | "compliance" | "reliability" | "optimise";
+export type Tab = "flow" | "load" | "ratelimit" | "cost" | "security" | "compliance" | "reliability" | "optimise" | "deployment";
 
 interface VizState {
   activeService: string;

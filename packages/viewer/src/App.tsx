@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import DiagramCard from "./components/DiagramCard";
 import OptimiseLens from "./components/OptimiseLens";
+import DeploymentLens from "./components/DeploymentLens";
 import RequestPanel from "./components/RequestPanel";
 import SequenceDiagram from "./components/SequenceDiagram";
 import Sidebar from "./components/Sidebar";
@@ -130,19 +131,37 @@ export default function App() {
                   topology: Boolean(topology),
                   sequence: Boolean(sequence),
                   optimise: Boolean(art?.optimise),
+                  deployment: Boolean(art?.deployment),
                 }}
               />
 
               {(sequence || topology) && (
                 <ReactFlowProvider key={activeService}>
                   {sequence && <SequenceDiagram seq={sequence} />}
-                  {topology && <DiagramCard topology={topology} optimise={art?.optimise ?? null} service={service!} />}
+                  {topology && <DiagramCard
+                    topology={topology}
+                    optimise={art?.optimise ?? null}
+                    deployment={art?.deployment ?? null}
+                    service={service!}
+                  />}
                 </ReactFlowProvider>
               )}
 
               {/* Optimisations normally live as a tab inside the topology card, but
                   they can be generated on their own — in which case there is no
                   card to host them and they would render nowhere. */}
+              {art?.deployment && !topology && (
+                <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5">
+                  <div className="flex items-baseline justify-between mb-3">
+                    <h2 className="text-[15px] font-bold">Deployment</h2>
+                    <span className="text-[10.5px] font-mono text-[var(--ink-soft)]">
+                      generate the flow lenses to see this alongside the diagram
+                    </span>
+                  </div>
+                  <DeploymentLens data={art.deployment} service={service!} />
+                </div>
+              )}
+
               {art?.optimise && !topology && (
                 <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5">
                   <div className="flex items-baseline justify-between mb-3">

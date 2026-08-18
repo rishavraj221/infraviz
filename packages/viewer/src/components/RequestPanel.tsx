@@ -26,6 +26,11 @@ const KINDS = [
     label: "Optimisations",
     blurb: "Ranked improvements you can hand straight to your agent to implement.",
   },
+  {
+    kind: "deployment" as const,
+    label: "Deployment & cost",
+    blurb: "What is actually running and what it costs. Needs a connected cloud account.",
+  },
 ];
 
 function promptFor(kind: string, service: ServiceDef) {
@@ -45,7 +50,7 @@ export default function RequestPanel({
   has,
 }: {
   service: ServiceDef;
-  has: { topology: boolean; sequence: boolean; optimise: boolean };
+  has: { topology: boolean; sequence: boolean; optimise: boolean; deployment: boolean };
 }) {
   const [copied, setCopied] = useState<string | null>(null);
   const providers = useRunner((s) => s.providers);
@@ -85,7 +90,7 @@ export default function RequestPanel({
         <div className="rounded-lg bg-[var(--danger-soft)] text-[var(--danger)] p-3 text-[12px] mb-3">{error}</div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {missing.map((k) => {
           const busy = Boolean(running[`${service.id}:${k.kind}`]);
           return (
