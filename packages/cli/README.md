@@ -227,6 +227,27 @@ before pointing it at anything confidential.
 
 ---
 
+## It tells you what it cannot tell you yet
+
+The overview leads with which questions the current data can actually answer,
+because a half-analysed system that presents itself as complete is worse than one
+that admits the gap:
+
+```
+A partial picture — useful, but not the whole story
+3 of 4 questions can be answered in full.
+
+How does this system actually work?          ▪▪▪  ANSWERED
+Where are the security and compliance gaps?  ▪▪▪  ANSWERED   1 critical
+What should we fix first?                    ▪▪▪  ANSWERED   4 improvements, 3 low-effort
+What is it costing, and where?               ▪▫▫  PARTIAL    US$412.55 billed
+```
+
+Coverage is per question rather than one percentage, because different questions
+need different artifacts, and a partial answer always names which services it
+covers. Tier C services are excluded from coverage — a thin router should not
+hold the picture hostage — but their findings still count toward the answers.
+
 ## What you get
 
 | Lens | Shows |

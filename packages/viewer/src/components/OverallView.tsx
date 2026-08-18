@@ -1,6 +1,8 @@
 import { useVizStore } from "../store/useVizStore";
 import { useEffect } from "react";
 import { useRunner, type RunKind } from "../useRunner";
+import ReadinessPanel from "./ReadinessPanel";
+import { computeReadiness, overallVerdict } from "../readiness";
 import { VerificationBadge } from "./DiagramCard";
 import type { VizData, Severity, Finding } from "../types";
 
@@ -45,8 +47,14 @@ export default function OverallView({ data }: { data: VizData }) {
   walk(project);
   walk(data.services);
 
+  const readiness = computeReadiness(data);
+  const verdict = overallVerdict(readiness, services.length);
+
   return (
     <div className="flex flex-col gap-5">
+      {/* What this tool can honestly tell you yet, before any raw numbers. */}
+      <ReadinessPanel items={readiness} verdict={verdict} />
+
       {/* A zero that means "not done yet" and a zero that means "none found" look
           identical, and both read as failure. So say which one it is instead of
           printing a number with no context. */}
