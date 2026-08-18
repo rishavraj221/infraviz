@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import { useRunner, type RunKind } from "../useRunner";
 import ReadinessPanel from "./ReadinessPanel";
 import { computeReadiness, overallVerdict } from "../readiness";
+import PrioritiesPanel from "./PrioritiesPanel";
+import { computeSynthesis } from "../synthesis";
 import { VerificationBadge } from "./DiagramCard";
 import type { VizData, Severity, Finding } from "../types";
 
@@ -54,6 +56,9 @@ export default function OverallView({ data }: { data: VizData }) {
     <div className="flex flex-col gap-5">
       {/* What this tool can honestly tell you yet, before any raw numbers. */}
       <ReadinessPanel items={readiness} verdict={verdict} />
+
+      {/* the payoff: one ranked list across every service analysed so far */}
+      <PrioritiesPanel synthesis={computeSynthesis(data)} data={data} />
 
       {/* A zero that means "not done yet" and a zero that means "none found" look
           identical, and both read as failure. So say which one it is instead of

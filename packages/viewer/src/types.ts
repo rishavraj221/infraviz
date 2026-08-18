@@ -121,6 +121,7 @@ export interface Optimisation {
   how: string;
   risk?: string;
   basis?: "measured" | "principle" | "practice";
+  fingerprint?: string;
   reference?: string;
   referenceNote?: string;
   file?: string;

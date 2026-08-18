@@ -248,6 +248,29 @@ need different artifacts, and a partial answer always names which services it
 covers. Tier C services are excluded from coverage — a thin router should not
 hold the picture hostage — but their findings still count toward the answers.
 
+## One list of what to actually do
+
+Below the readiness panel, everything found so far collapses into a single
+ranked list across the whole system:
+
+```
+What to do next        7 items · 2 affect more than one
+
+1  Webhook signature not verified on replay              CRITICAL       Orders
+2  No distributed tracing anywhere in the system         WARN         4 services
+3  Database connections are created per request          WARN         3 services
+4  Batch the Stripe lookups                              LOW EFFORT     Orders
+```
+
+Ranking is mechanical and stated rather than a black box: risk before
+improvement, low effort before high, and a boost for anything landing in several
+services — that is one change, not five.
+
+Findings citing the **same substring in the same file** are merged into one item.
+Three services each reporting "connections are created per request" is one fix at
+the shared module, and seeing it as three separate tickets is how that fix never
+gets made.
+
 ## What you get
 
 | Lens | Shows |
