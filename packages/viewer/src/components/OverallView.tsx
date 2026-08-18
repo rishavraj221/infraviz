@@ -5,6 +5,7 @@ import ReadinessPanel from "./ReadinessPanel";
 import { computeReadiness, overallVerdict } from "../readiness";
 import PrioritiesPanel from "./PrioritiesPanel";
 import { computeSynthesis } from "../synthesis";
+import ChecklistPanel from "./ChecklistPanel";
 import { VerificationBadge } from "./DiagramCard";
 import type { VizData, Severity, Finding } from "../types";
 
@@ -59,6 +60,9 @@ export default function OverallView({ data }: { data: VizData }) {
 
       {/* the payoff: one ranked list across every service analysed so far */}
       <PrioritiesPanel synthesis={computeSynthesis(data)} data={data} />
+
+      {/* what this kind of system should be checked for, and what nobody has looked at */}
+      <ChecklistPanel data={data} />
 
       {/* A zero that means "not done yet" and a zero that means "none found" look
           identical, and both read as failure. So say which one it is instead of

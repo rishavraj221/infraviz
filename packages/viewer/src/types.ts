@@ -6,6 +6,7 @@ export type Tier = "A" | "B" | "C";
 export type Verification = "verified" | "failed" | "unverifiable";
 
 export interface Finding {
+  addresses?: string[];
   id: string;
   title: string;
   severity: "warn" | "critical";
@@ -43,6 +44,7 @@ export interface InfraResource {
 }
 
 export interface Project {
+  profiles?: string[];
   schemaVersion: 1;
   name: string;
   stack?: { language?: string; framework?: string; entrypoint?: string };
@@ -78,6 +80,7 @@ export interface TopoStep {
 }
 
 export interface Topology {
+  assessed?: string[];
   schemaVersion: 1;
   taskNodeId: string;
   summary: string;
@@ -121,6 +124,7 @@ export interface Optimisation {
   how: string;
   risk?: string;
   basis?: "measured" | "principle" | "practice";
+  addresses?: string[];
   fingerprint?: string;
   reference?: string;
   referenceNote?: string;

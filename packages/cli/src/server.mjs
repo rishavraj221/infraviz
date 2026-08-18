@@ -333,20 +333,22 @@ export async function startServer({ root, port, onReady }) {
 
     let prompt;
     let service;
+    let profiles = [];
     if (kind === "scan") {
       prompt = spec.scanPrompt();
     } else {
       const { project } = await loadAll(root);
+      profiles = project?.profiles ?? [];
       service = (project?.services ?? []).find((s) => s.id === serviceId);
       if (!service) throw new Error(`Unknown service: ${serviceId}`);
       prompt =
         kind === "topology"
-          ? spec.topologyPrompt(service)
+          ? spec.topologyPrompt(service, profiles)
           : kind === "sequence"
             ? spec.sequencePrompt(service)
             : kind === "deployment"
               ? spec.deploymentPrompt(service)
-              : spec.optimisePrompt(service);
+              : spec.optimisePrompt(service, profiles);
     }
     // the agent returns JSON to us; we do the writing and verifying
     prompt += `\n\nIMPORTANT: do not write any files. Return the JSON object as your final message.`;

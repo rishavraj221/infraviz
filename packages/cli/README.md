@@ -271,6 +271,32 @@ Three services each reporting "connections are created per request" is one fix a
 the shared module, and seeing it as three separate tickets is how that fix never
 gets made.
 
+## Checks that match what you actually built
+
+A RAG service and a CRUD endpoint fail in different ways, so the scan declares
+what kind of system this is and the checks follow from that:
+
+```
+Production checks    LLM / AI application · HTTP API
+                     3 flagged, 3 clean, 9 not yet examined
+
+Is retrieved or user content kept separable from instructions?  owasp-llm-top10  UNKNOWN
+Is there a ceiling on tokens or calls per request?              owasp-llm-top10  UNKNOWN
+Does every endpoint enforce authorisation, not authentication?  owasp-top10      FLAGGED
+  Webhook signature not verified on replay
+```
+
+Two rules keep this honest:
+
+- **Every check names an established reference.** "Research what matters in
+  production" is an invitation to confident-sounding invention, and a fabricated
+  best practice is harder to catch than a fabricated code citation because
+  nothing contradicts it. A check that cannot be tied to a source does not exist.
+- **"Unknown" is never styled as a pass.** Coverage is declared by the artifacts,
+  not guessed by matching keywords against findings. A check nobody examined is
+  an open question — letting it read as green would turn absence of evidence into
+  evidence of absence.
+
 ## What you get
 
 | Lens | Shows |

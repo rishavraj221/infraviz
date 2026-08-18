@@ -6,6 +6,9 @@
 // lanes" is useful; "invalid_union" is not.
 
 import { z } from "zod";
+import { PROFILE_IDS, CHECK_IDS } from "./profiles.js";
+
+export * from "./profiles.js";
 
 /**
  * Optional text field that tolerates an explicit `null`.
@@ -57,6 +60,10 @@ export const Finding = z
     breaks: z.string().min(1).describe("what actually goes wrong — one sentence"),
     fix: z.string().min(1).describe("what to do about it — one sentence"),
     edges: z.array(z.string()).default([]).describe("topology edge ids this implicates"),
+    addresses: z
+      .array(z.enum(CHECK_IDS as [string, ...string[]]))
+      .default([])
+      .describe("production check ids this finding assesses — declared, never guessed"),
   })
   .merge(Evidence.partial());
 
@@ -107,6 +114,10 @@ export const Project = z.object({
       resources: z.array(InfraResource).default([]),
     })
     .optional(),
+  profiles: z
+    .array(z.enum(PROFILE_IDS as [string, ...string[]]))
+    .default([])
+    .describe("what kind of system this is — drives which production checks apply"),
   services: z.array(ServiceDef).default([]),
   platformFindings: z.array(Finding).default([]),
   generatedAt: optText,
@@ -177,6 +188,10 @@ export const Topology = z
         reliability: z.array(Finding).default([]),
       })
       .default({ security: [], compliance: [], reliability: [] }),
+    assessed: z
+      .array(z.enum(CHECK_IDS as [string, ...string[]]))
+      .default([])
+      .describe("checks you actually examined for this service, including ones that came back clean"),
     _meta: z.record(z.string(), z.unknown()).optional(),
   })
   .superRefine((t, ctx) => {
@@ -292,6 +307,10 @@ export const Optimisation = z
       "REQUIRED when basis is 'principle'. Must be an id from REFERENCES — never a URL you composed."
     ),
     referenceNote: optText.describe("which part of that reference applies, in one clause"),
+    addresses: z
+      .array(z.enum(CHECK_IDS as [string, ...string[]]))
+      .default([])
+      .describe("production check ids this addresses — declared, never guessed"),
   })
   .merge(Evidence.partial())
   .superRefine((o, ctx) => {

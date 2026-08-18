@@ -42,6 +42,27 @@ every file you open.
 
 OUTPUT: one JSON object, nothing else. No prose, no markdown fence.`;
 
+import { PROFILES, checksFor } from "@infraviz/schema";
+
+/** The checks that apply to this system, rendered for a prompt. */
+function checklistFor(profiles: string[]): string {
+  const checks = checksFor(profiles);
+  if (!checks.length) return "";
+  return `
+PRODUCTION CHECKS THAT APPLY TO THIS SYSTEM (profiles: ${profiles.join(", ") || "none declared"}):
+
+${checks.map((c) => `  ${c.id}\n    ${c.question}\n    Why: ${c.matters}  [${c.reference}]`).join("\n")}
+
+Work through these deliberately — they are the things that bite this kind of
+system in production. For each one you examine, add its id to "assessed" on the
+topology, WHETHER OR NOT you found a problem. A check you looked at and found
+clean is valuable information; a check nobody looked at must not be mistaken for
+one that passed.
+
+When a finding or optimisation answers a check, list that id in its "addresses".
+Never claim a check you did not actually examine.`;
+}
+
 export function scanPrompt(): string {
   return `Analyse this codebase so it can be visualised as an infrastructure and request-flow map.
 
@@ -63,6 +84,7 @@ Write the result to .infraviz/project.json in this shape:
         "name": "...", "detail": "size/class read from IaC", "file": "...", "fingerprint": "..." }
     ]
   },
+  "profiles": ["llm","api","data","realtime","stateful"],
   "services": [
     { "id": "snake_case", "name": "Human Name", "router": "path/to/router.ext", "loc": 123,
       "tier": "A|B|C", "severity": "ok|warn|critical",
@@ -76,6 +98,12 @@ Write the result to .infraviz/project.json in this shape:
   ]
 }
 
+PROFILES say what kind of system this is, which decides what gets checked in
+production. Pick every one that applies, from:
+${PROFILES.map((p) => `  ${p.id.padEnd(14)} ${p.detect}`).join("\n")}
+Most systems match more than one. "observability" is always applied and does not
+need declaring.
+
 TIER means depth of treatment, and should match substance rather than being uniform:
   A = complex or critical: many external calls, real blast radius
   B = moderate: some external deps or notable behaviour
@@ -88,11 +116,12 @@ the ones that stay unfixed precisely because they belong to nobody.
 Severity reflects risk you actually evidenced. Most services are "ok".`;
 }
 
-export function topologyPrompt(service: { name: string; router: string }): string {
+export function topologyPrompt(service: { name: string; router: string }, profiles: string[] = []): string {
   return `Describe ONE service's request topology as a node/edge graph.
 
 SERVICE: ${service.name}
 ROUTER: ${service.router}
+${checklistFor(profiles)}
 
 Read the router AND follow its imports into the modules doing the real work.
 
@@ -114,6 +143,7 @@ Write to .infraviz/services/<service-id>/topology.json:
     "fanOut": { "label": "OpenAI", "unitLabel": "rows processed", "defaultUnits": 50, "maxUnits": 1000 }
   },
   "kpis": [{ "label": "...", "value": "...", "tone": "warn" }],
+  "assessed": ["ids of every check you examined, including the clean ones"],
   "risk": { "security": [], "compliance": [], "reliability": [] }
 }
 
@@ -167,11 +197,13 @@ Write to .infraviz/services/<service-id>/sequence.json:
   when the return is uninteresting.`;
 }
 
-export function optimisePrompt(service: { name: string; router: string }): string {
+export function optimisePrompt(service: { name: string; router: string }, profiles: string[] = []): string {
   return `Identify concrete optimisations for ONE service.
 
 SERVICE: ${service.name}
 ROUTER: ${service.router}
+
+${checklistFor(profiles)}
 
 This is the most useful artifact in the set, and the easiest to fill with
 platitudes. The bar: a senior engineer reads an item and immediately knows
