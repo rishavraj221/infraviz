@@ -77,7 +77,6 @@ export default function App() {
   if (!data?.project || !(data.project.services?.length > 0)) {
     return <StartScreen emptyScan={Boolean(data?.project)} progress={data?.progress ?? null} />;
   }
-  const project = data.project;
 
   if (error) {
     return (

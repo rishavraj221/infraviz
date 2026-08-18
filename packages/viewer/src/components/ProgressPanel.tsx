@@ -69,7 +69,7 @@ export default function ProgressPanel({ progress }: { progress: Progress }) {
 
       {steps.length > 1 && (
         <div className="px-4 py-2.5 border-t border-[var(--line)] max-h-[170px] overflow-y-auto flex flex-col-reverse">
-          {[...steps.slice(0, -1)].reverse().map((st, i) => (
+          {steps.slice(0, -1).reverse().map((st, i) => (
             <div key={steps.length - i} className="flex gap-2.5 text-[11.5px] leading-relaxed">
               <span className="font-mono text-[var(--ink-soft)] opacity-50 shrink-0">{st.at.slice(11, 19)}</span>
               <span className="text-[var(--ink-soft)]">{st.text}</span>

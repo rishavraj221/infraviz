@@ -29,11 +29,22 @@ export default function ChecklistPanel({ data }: { data: VizData }) {
     const findings = a.topology?.risk
       ? [...a.topology.risk.security, ...a.topology.risk.compliance, ...a.topology.risk.reliability]
       : [];
-    for (const f of findings) for (const id of f.addresses ?? []) (assessed.add(id), flagged.set(id, f.title));
-    for (const o of a.optimise?.items ?? []) for (const id of o.addresses ?? []) (assessed.add(id), flagged.set(id, o.title));
+    for (const f of findings)
+      for (const id of f.addresses ?? []) {
+        assessed.add(id);
+        flagged.set(id, f.title);
+      }
+    for (const o of a.optimise?.items ?? [])
+      for (const id of o.addresses ?? []) {
+        assessed.add(id);
+        flagged.set(id, o.title);
+      }
   }
   for (const f of data.project.platformFindings ?? []) {
-    for (const id of f.addresses ?? []) (assessed.add(id), flagged.set(id, f.title));
+    for (const id of f.addresses ?? []) {
+      assessed.add(id);
+      flagged.set(id, f.title);
+    }
   }
 
   const stateOf = (id: string): State => (flagged.has(id) ? "finding" : assessed.has(id) ? "clean" : "unknown");

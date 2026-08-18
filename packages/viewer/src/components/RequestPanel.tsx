@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ServiceDef } from "../types";
 import { useRunner, type RunKind } from "../useRunner";
+import { promptForService, type Kind } from "../prompts";
 
 /**
  * The bridge between this page and your agent.
@@ -33,18 +34,6 @@ const KINDS = [
   },
 ];
 
-function promptFor(kind: string, service: ServiceDef) {
-  return `Generate the ${kind} artifact for the "${service.name}" service in this repo.
-
-Router: ${service.router}
-
-Run \`npx infraviz spec ${kind}\` and follow it exactly. Write the result to
-.infraviz/services/${service.id}/${kind}.json, then run \`npx infraviz verify\`
-and fix anything it reports.
-
-Only this one service — do not analyse the rest of the repo.`;
-}
-
 export default function RequestPanel({
   service,
   has,
@@ -68,9 +57,9 @@ export default function RequestPanel({
   const runBatch = useRunner((s) => s.runBatch);
   const missing = KINDS.filter((k) => !has[k.kind]);
 
-  async function copy(kind: string) {
+  async function copy(kind: string, text?: string) {
     try {
-      await navigator.clipboard.writeText(promptFor(kind, service));
+      await navigator.clipboard.writeText(text ?? promptForService(service, [kind as Kind]));
       setCopied(kind);
       setTimeout(() => setCopied(null), 2000);
     } catch {
@@ -87,18 +76,32 @@ export default function RequestPanel({
         Generate here, or copy a prompt for your IDE — both write the same files, so you can mix the two freely. Each
         covers this service only, so you spend tokens on what you're actually looking at.
       </p>
-      {canRunHere && missing.length > 1 && (
-        <div className="flex flex-wrap items-center gap-3 mb-3 pb-3 border-b border-[var(--line)]">
+      {missing.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2.5 mb-3 pb-3 border-b border-[var(--line)]">
+          {canRunHere && (
+            <button
+              disabled={Boolean(running[`all:${service.id}`])}
+              onClick={() => runBatch(missing.map((k) => ({ kind: k.kind, serviceId: service.id })), `all:${service.id}`)}
+              className="text-[12.5px] font-semibold px-3.5 py-2 rounded-md bg-[var(--accent)] text-[var(--surface)] disabled:opacity-40 cursor-pointer"
+            >
+              {running[`all:${service.id}`] ? "Generating…" : `Generate all ${missing.length}`}
+            </button>
+          )}
+          {/* the aggregate copy must exist whether or not a CLI is installed —
+              without it an IDE user pastes once per artifact */}
           <button
-            disabled={Boolean(running[`all:${service.id}`])}
-            onClick={() => runBatch(missing.map((k) => ({ kind: k.kind, serviceId: service.id })), `all:${service.id}`)}
-            className="text-[12.5px] font-semibold px-3.5 py-2 rounded-md bg-[var(--accent)] text-[var(--surface)] disabled:opacity-40 cursor-pointer"
+            onClick={() => copy("__all", promptForService(service, missing.map((m) => m.kind as Kind)))}
+            className={`text-[12.5px] font-semibold px-3.5 py-2 rounded-md cursor-pointer ${
+              canRunHere
+                ? "border border-[var(--line)] text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                : "bg-[var(--accent)] text-[var(--surface)]"
+            }`}
           >
-            {running[`all:${service.id}`] ? "Generating…" : `Generate all ${missing.length}`}
+            {copied === "__all" ? "Copied ✓" : `Copy one prompt for all ${missing.length}`}
           </button>
-          {/* each artifact is a separate model run — say so before they click */}
           <span className="text-[11px] text-[var(--ink-soft)]">
-            Runs one after another · {missing.length} model calls, a few minutes each
+            {canRunHere ? "Runs one after another · " : "One paste covers this whole service · "}
+            {missing.length} model calls, a few minutes each
           </span>
         </div>
       )}

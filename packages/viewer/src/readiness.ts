@@ -20,6 +20,10 @@ export interface Answerable {
   question: string;
   /** what unlocks it, in plain language */
   needs: string;
+  /** the artifact that closes the gap, so the row can offer to generate it */
+  kind: "sequence" | "topology" | "optimise" | "deployment";
+  /** a cloud connector is a prerequisite this app cannot satisfy for you */
+  needsConnector?: boolean;
   level: Level;
   covered: string[];
   missing: string[];
@@ -96,7 +100,8 @@ export function computeReadiness(data: VizData): Answerable[] {
     {
       id: "how",
       question: "How does this system actually work?",
-      needs: "a sequence or flow diagram per service",
+      needs: "sequence diagrams",
+      kind: "sequence",
       ...flow,
       headline:
         flow.level === "none"
@@ -107,7 +112,8 @@ export function computeReadiness(data: VizData): Answerable[] {
     {
       id: "risk",
       question: "Where are the security and compliance gaps?",
-      needs: "the flow & risk lenses per service",
+      needs: "flow & risk lenses",
+      kind: "topology",
       ...risk,
       headline:
         risk.level === "none"
@@ -120,7 +126,8 @@ export function computeReadiness(data: VizData): Answerable[] {
     {
       id: "fix",
       question: "What should we fix first?",
-      needs: "optimisations per service",
+      needs: "optimisations",
+      kind: "optimise",
       ...opt,
       headline:
         opt.level === "none"
@@ -131,7 +138,9 @@ export function computeReadiness(data: VizData): Answerable[] {
     {
       id: "cost",
       question: "What is it costing, and where?",
-      needs: "a connected cloud account, then the deployment lens",
+      needs: "the deployment lens",
+      kind: "deployment",
+      needsConnector: true,
       ...dep,
       headline:
         dep.level === "none"

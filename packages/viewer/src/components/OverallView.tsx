@@ -1,10 +1,11 @@
 import { useVizStore } from "../store/useVizStore";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRunner, type RunKind } from "../useRunner";
 import ReadinessPanel from "./ReadinessPanel";
 import { computeReadiness, overallVerdict } from "../readiness";
 import PrioritiesPanel from "./PrioritiesPanel";
 import { computeSynthesis } from "../synthesis";
+import { promptForProject, type Kind } from "../prompts";
 import ChecklistPanel from "./ChecklistPanel";
 import { VerificationBadge } from "./DiagramCard";
 import type { VizData, Severity, Finding } from "../types";
@@ -23,6 +24,7 @@ export default function OverallView({ data }: { data: VizData }) {
   const loadProviders = useRunner((r) => r.loadProviders);
   const runBatch = useRunner((r) => r.runBatch);
   const running = useRunner((r) => r.running);
+  const [copiedAll, setCopiedAll] = useState(false);
 
   useEffect(() => {
     loadProviders();
@@ -107,14 +109,33 @@ export default function OverallView({ data }: { data: VizData }) {
                 : "The scan found the services below but has not drawn anything yet — work is done one service at a time so you only spend on what you look at."}{" "}
               <b className="text-[var(--ink)]">Pick a service</b> to go one at a time.
             </p>
-            {canRun && (
-              <div className="flex flex-wrap items-center gap-3">
+            {(
+              <div className="flex flex-wrap items-center gap-2.5">
+                {canRun && (
+                  <button
+                    disabled={Boolean(running["all:project"])}
+                    onClick={() => runBatch(pending, "all:project")}
+                    className="text-[12.5px] font-semibold px-3.5 py-2 rounded-md bg-[var(--accent)] text-[var(--surface)] disabled:opacity-40 cursor-pointer"
+                  >
+                    {running["all:project"] ? "Generating…" : `Generate everything (${pending.length})`}
+                  </button>
+                )}
+                {/* one paste that covers the whole project, for the IDE path */}
                 <button
-                  disabled={Boolean(running["all:project"])}
-                  onClick={() => runBatch(pending, "all:project")}
-                  className="text-[12.5px] font-semibold px-3.5 py-2 rounded-md bg-[var(--accent)] text-[var(--surface)] disabled:opacity-40 cursor-pointer"
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      promptForProject(data, pending.map((p) => ({ serviceId: p.serviceId!, kind: p.kind as Kind })))
+                    );
+                    setCopiedAll(true);
+                    setTimeout(() => setCopiedAll(false), 2000);
+                  }}
+                  className={`text-[12.5px] font-semibold px-3.5 py-2 rounded-md cursor-pointer ${
+                    canRun
+                      ? "border border-[var(--line)] text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                      : "bg-[var(--accent)] text-[var(--surface)]"
+                  }`}
                 >
-                  {running["all:project"] ? "Generating…" : `Generate everything (${pending.length})`}
+                  {copiedAll ? "Copied ✓" : `Copy one prompt for all ${pending.length}`}
                 </button>
                 {/* the honest number: these are billed model runs, not a refresh */}
                 <span className="text-[11px] text-[var(--ink-soft)] leading-relaxed">
