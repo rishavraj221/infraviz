@@ -1,4 +1,6 @@
 import { useVizStore } from "../store/useVizStore";
+import { useEffect } from "react";
+import { useRunner, type RunKind } from "../useRunner";
 import { VerificationBadge } from "./DiagramCard";
 import type { VizData, Severity, Finding } from "../types";
 
@@ -12,6 +14,14 @@ const rank = (s: Severity) => (s === "critical" ? 2 : s === "warn" ? 1 : 0);
 
 export default function OverallView({ data }: { data: VizData }) {
   const setActiveService = useVizStore((s) => s.setActiveService);
+  const providers = useRunner((r) => r.providers);
+  const loadProviders = useRunner((r) => r.loadProviders);
+  const runBatch = useRunner((r) => r.runBatch);
+  const running = useRunner((r) => r.running);
+
+  useEffect(() => {
+    loadProviders();
+  }, [loadProviders]);
   const { project } = data;
   const services = project.services ?? [];
   const platform = project.platformFindings ?? [];
@@ -65,13 +75,41 @@ export default function OverallView({ data }: { data: VizData }) {
         />
       </div>
 
-      {!generated && (
-        <div className="rounded-lg border border-dashed border-[var(--line)] p-4 text-[12.5px] text-[var(--ink-soft)] leading-relaxed">
-          The scan found the services below but has not drawn anything yet — diagrams are generated one service at a
-          time so you only spend on what you actually look at. <b className="text-[var(--ink)]">Pick a service</b> to
-          generate its flow, sequence and optimisations.
-        </div>
-      )}
+      {(() => {
+        const kinds = ["sequence", "topology", "optimise"] as const;
+        const pending = services.flatMap((s) =>
+          kinds.filter((k) => !data.services[s.id]?.[k]).map((k) => ({ kind: k as RunKind, serviceId: s.id }))
+        );
+        const canRun = providers.some((p) => p.installed);
+        if (!pending.length) return null;
+        return (
+          <div className="rounded-lg border border-dashed border-[var(--line)] p-4">
+            <p className="text-[12.5px] text-[var(--ink-soft)] leading-relaxed mb-3">
+              {generated
+                ? `${pending.length} artifact${pending.length === 1 ? "" : "s"} still to generate across ${services.length} services.`
+                : "The scan found the services below but has not drawn anything yet — work is done one service at a time so you only spend on what you look at."}{" "}
+              <b className="text-[var(--ink)]">Pick a service</b> to go one at a time.
+            </p>
+            {canRun && (
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  disabled={Boolean(running["all:project"])}
+                  onClick={() => runBatch(pending, "all:project")}
+                  className="text-[12.5px] font-semibold px-3.5 py-2 rounded-md bg-[var(--accent)] text-[var(--surface)] disabled:opacity-40 cursor-pointer"
+                >
+                  {running["all:project"] ? "Generating…" : `Generate everything (${pending.length})`}
+                </button>
+                {/* the honest number: these are billed model runs, not a refresh */}
+                <span className="text-[11px] text-[var(--ink-soft)] leading-relaxed">
+                  {pending.length} model calls, a few minutes each — roughly{" "}
+                  {Math.round(pending.length * 3)}–{Math.round(pending.length * 6)} minutes and{" "}
+                  ${(pending.length * 0.5).toFixed(0)}–${(pending.length * 1.0).toFixed(0)} at typical rates.
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {project.stack && (
         <p className="text-[12.5px] text-[var(--ink-soft)]">

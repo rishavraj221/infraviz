@@ -244,8 +244,11 @@ export async function startServer({ root, port, onReady }) {
 
     // ---- UI-driven generation
     if (p === "/api/run" && req.method === "POST") {
-      const { kind, serviceId, provider, model, effort } = await readBody(req);
-      if (!["scan", "topology", "sequence", "optimise", "deployment"].includes(kind)) {
+      const body = await readBody(req);
+      const { serviceId, provider, model, effort } = body;
+      req.batch = body.batch;
+      const kind = body.kind ?? body.batch?.[0]?.kind;
+      if (!req.batch && !["scan", "topology", "sequence", "optimise", "deployment"].includes(kind)) {
         return json(res, 400, { error: "kind must be scan|topology|sequence|optimise|deployment" });
       }
       const consent = await getConsent(root);
@@ -265,9 +268,25 @@ export async function startServer({ root, port, onReady }) {
       const jobId = randomUUID();
       jobs.set(jobId, { id: jobId, status: "running", events: [] });
       json(res, 200, { jobId });
-      runJob({ jobId, kind, serviceId, providerId, model, effort }).catch((e) =>
-        finish(jobId, { status: "error", error: String(e?.message ?? e) })
-      );
+
+      // A batch is just a sequence of the same jobs, run one at a time so the
+      // agent CLI is never asked to do two things at once and progress stays
+      // readable. Serial is also what keeps a failure from poisoning the rest.
+      const batch = Array.isArray(req.batch) ? req.batch : null;
+      (async () => {
+        const items = batch ?? [{ kind, serviceId }];
+        let failed = 0;
+        for (const [i, item] of items.entries()) {
+          push(jobId, { type: "status", text: `[${i + 1}/${items.length}] ${item.kind}${item.serviceId ? ` · ${item.serviceId}` : ""}` });
+          try {
+            await runJob({ jobId, ...item, providerId, model, effort, keepOpen: true });
+          } catch (e) {
+            failed++;
+            push(jobId, { type: "status", text: `failed: ${String(e?.message ?? e)}` });
+          }
+        }
+        finish(jobId, failed ? { status: "error", error: `${failed} of ${items.length} failed` } : { status: "done" });
+      })();
       return;
     }
 
@@ -307,7 +326,7 @@ export async function startServer({ root, port, onReady }) {
     broadcast({ type: "data-changed" });
   }
 
-  async function runJob({ jobId, kind, serviceId, providerId, model, effort }) {
+  async function runJob({ jobId, kind, serviceId, providerId, model, effort, keepOpen }) {
     const spec = await import("@infraviz/spec");
     const { validate } = await import("@infraviz/schema");
     const { verifyArtifact } = await import("@infraviz/schema/verify");
@@ -319,7 +338,7 @@ export async function startServer({ root, port, onReady }) {
     } else {
       const { project } = await loadAll(root);
       service = (project?.services ?? []).find((s) => s.id === serviceId);
-      if (!service) return finish(jobId, { status: "error", error: `Unknown service: ${serviceId}` });
+      if (!service) throw new Error(`Unknown service: ${serviceId}`);
       prompt =
         kind === "topology"
           ? spec.topologyPrompt(service)
@@ -334,7 +353,7 @@ export async function startServer({ root, port, onReady }) {
 
     push(jobId, { type: "status", text: `Running ${kind}${service ? ` for ${service.name}` : ""} via ${providerId}` });
     const r = await runAgent({ providerId, model, effort, cwd: root, prompt, onEvent: (ev) => push(jobId, ev) });
-    if (!r.ok) return finish(jobId, { status: "error", error: r.error });
+    if (!r.ok) throw new Error(r.error);
 
     const schemaKind = kind === "scan" ? "project" : kind;
     const payload = r.json;
@@ -362,7 +381,8 @@ export async function startServer({ root, port, onReady }) {
       type: "status",
       text: `Done · ${stats.verified} verified, ${stats.failed} failed${v.ok ? "" : " · schema warnings"}`,
     });
-    finish(jobId, { status: "done" });
+    broadcast({ type: "data-changed" });
+    if (!keepOpen) finish(jobId, { status: "done" });
   }
 
   return new Promise((res2, rej) => {

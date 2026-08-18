@@ -215,6 +215,19 @@ Rules that make this worth reading:
   actually a month of work destroys trust in the whole list.
 - dimension: latency | cost | reliability | ux | scale | security. Use the ones
   that genuinely apply, not all of them.
+- SAY WHERE IT COMES FROM. Every item carries "basis":
+    "measured"  — you derived it from THIS codebase or deployment. Strongest, and
+                  what you should reach for first: "p95 CPU is 11% on 4 vCPU".
+    "principle" — a named reference. Set "reference" to one of the ids below and
+                  "referenceNote" to the clause that applies. NEVER invent a title,
+                  author, year or URL; if what you want is not in this list, the
+                  honest answer is "practice".
+    "practice"  — ordinary engineering judgement, no source claimed.
+  Valid reference ids: 12factor, aws-well-architected, google-sre, owasp-top10,
+  owasp-llm-top10, owasp-asvs, cncf-observability, opentelemetry,
+  k8s-production-best-practices, release-it, ddia, nist-800-53, gdpr,
+  postgres-perf.
+  A fabricated citation is worse than none: it makes every real one suspect.
 - SAY WHEN IT IS ALREADY FINE. A thin, correct CRUD endpoint should return
   \`items: []\` with a note saying so. Padding this file is worse than leaving it
   empty, because it trains the reader to skim past the real items.

@@ -120,6 +120,9 @@ export interface Optimisation {
   gain: string;
   how: string;
   risk?: string;
+  basis?: "measured" | "principle" | "practice";
+  reference?: string;
+  referenceNote?: string;
   file?: string;
   line?: number;
   verification?: "verified" | "failed" | "unverifiable";

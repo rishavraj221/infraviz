@@ -65,6 +65,7 @@ export default function RequestPanel({
   }, [loadProviders]);
 
   const canRunHere = providers.some((p) => p.installed);
+  const runBatch = useRunner((s) => s.runBatch);
   const missing = KINDS.filter((k) => !has[k.kind]);
 
   async function copy(kind: string) {
@@ -86,6 +87,22 @@ export default function RequestPanel({
         Generate here, or copy a prompt for your IDE — both write the same files, so you can mix the two freely. Each
         covers this service only, so you spend tokens on what you're actually looking at.
       </p>
+      {canRunHere && missing.length > 1 && (
+        <div className="flex flex-wrap items-center gap-3 mb-3 pb-3 border-b border-[var(--line)]">
+          <button
+            disabled={Boolean(running[`all:${service.id}`])}
+            onClick={() => runBatch(missing.map((k) => ({ kind: k.kind, serviceId: service.id })), `all:${service.id}`)}
+            className="text-[12.5px] font-semibold px-3.5 py-2 rounded-md bg-[var(--accent)] text-[var(--surface)] disabled:opacity-40 cursor-pointer"
+          >
+            {running[`all:${service.id}`] ? "Generating…" : `Generate all ${missing.length}`}
+          </button>
+          {/* each artifact is a separate model run — say so before they click */}
+          <span className="text-[11px] text-[var(--ink-soft)]">
+            Runs one after another · {missing.length} model calls, a few minutes each
+          </span>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-lg bg-[var(--danger-soft)] text-[var(--danger)] p-3 text-[12px] mb-3">{error}</div>
       )}

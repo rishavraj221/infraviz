@@ -220,6 +220,56 @@ export const Topology = z
  * (what NOT doing it costs) and `gain` (what doing it buys) — a recommendation
  * without both is an opinion, not a decision aid.
  */
+/**
+ * Where a recommendation comes from.
+ *
+ * Asking a model to cite its reasoning invites invented citations — "per Fowler
+ * (2019)" for a paper that does not exist — which is the exact failure this
+ * project exists to prevent. So the basis is a closed set, and the strongest
+ * value is the one grounded in the user's own system rather than in literature:
+ *
+ *   measured  — derived from THIS codebase or deployment. Strongest.
+ *   principle — a named, well-known reference from REFERENCES below. Checkable.
+ *   practice  — ordinary engineering judgement, no source claimed. Honest.
+ *
+ * "practice" is a first-class answer. Dressing judgement up as a citation is
+ * worse than admitting it is judgement.
+ */
+export const Basis = z.enum(["measured", "principle", "practice"]);
+
+/**
+ * A closed set of genuinely well-known references. Closed on purpose: an agent
+ * picking from a list cannot invent a title, and a reader can check any of them.
+ * Anything not here should be "practice" rather than a plausible-looking URL.
+ */
+export const REFERENCES = {
+  "12factor": { title: "The Twelve-Factor App", url: "https://12factor.net" },
+  "aws-well-architected": {
+    title: "AWS Well-Architected Framework",
+    url: "https://aws.amazon.com/architecture/well-architected/",
+  },
+  "google-sre": { title: "Google SRE Book", url: "https://sre.google/books/" },
+  "owasp-top10": { title: "OWASP Top 10", url: "https://owasp.org/www-project-top-ten/" },
+  "owasp-llm-top10": {
+    title: "OWASP Top 10 for LLM Applications",
+    url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/",
+  },
+  "owasp-asvs": { title: "OWASP Application Security Verification Standard", url: "https://owasp.org/www-project-application-security-verification-standard/" },
+  "cncf-observability": { title: "CNCF Observability Whitepaper", url: "https://github.com/cncf/tag-observability/blob/main/whitepaper.md" },
+  "opentelemetry": { title: "OpenTelemetry Specification", url: "https://opentelemetry.io/docs/specs/otel/" },
+  "k8s-production-best-practices": {
+    title: "Kubernetes Configuration Best Practices",
+    url: "https://kubernetes.io/docs/concepts/configuration/overview/",
+  },
+  "release-it": { title: "Release It! — stability patterns (circuit breaker, bulkhead, timeout)", url: "https://pragprog.com/titles/mnee2/release-it-second-edition/" },
+  "ddia": { title: "Designing Data-Intensive Applications", url: "https://dataintensive.net" },
+  "nist-800-53": { title: "NIST SP 800-53 Security Controls", url: "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final" },
+  "gdpr": { title: "GDPR", url: "https://gdpr-info.eu" },
+  "postgres-perf": { title: "PostgreSQL Performance Documentation", url: "https://www.postgresql.org/docs/current/performance-tips.html" },
+} as const;
+
+export const ReferenceId = z.enum(Object.keys(REFERENCES) as [string, ...string[]]);
+
 export const Optimisation = z
   .object({
     id: z.string().min(1),
@@ -237,8 +287,22 @@ export const Optimisation = z
     gain: z.string().min(1).describe("what improves, and by roughly how much"),
     how: z.string().min(1).describe("the actual change, 1-2 sentences. Mechanism, not platitude."),
     risk: optText.describe("what could go wrong or regress — omit if genuinely none"),
+    basis: Basis.default("practice").describe("where this comes from — see Basis"),
+    reference: ReferenceId.optional().describe(
+      "REQUIRED when basis is 'principle'. Must be an id from REFERENCES — never a URL you composed."
+    ),
+    referenceNote: optText.describe("which part of that reference applies, in one clause"),
   })
-  .merge(Evidence.partial());
+  .merge(Evidence.partial())
+  .superRefine((o, ctx) => {
+    if (o.basis === "principle" && !o.reference) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["reference"],
+        message: `basis "principle" requires a reference id from: ${Object.keys(REFERENCES).join(", ")}`,
+      });
+    }
+  });
 
 export const Optimisations = z.object({
   schemaVersion: z.literal(1),

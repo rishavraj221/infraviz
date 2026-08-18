@@ -17,6 +17,11 @@ function taskFor(o: Optimisation, service: ServiceDef) {
     `How:            ${o.how}`,
     o.risk ? `Watch out for:  ${o.risk}` : null,
     o.file ? `Location:       ${o.file}${o.line ? `:${o.line}` : ""}` : null,
+    o.reference && REFERENCES[o.reference]
+      ? `Basis:          ${REFERENCES[o.reference].title} (${REFERENCES[o.reference].url})${o.referenceNote ? ` — ${o.referenceNote}` : ""}`
+      : o.basis === "measured"
+        ? `Basis:          measured from this system`
+        : null,
     `Router:         ${service.router}`,
     ``,
     `Make only this change — do not refactor beyond it. Run the test suite if one`,
@@ -60,6 +65,30 @@ const EFFORT: Record<string, { label: string; fg: string; bg: string }> = {
   low: { label: "low effort", fg: "var(--ok)", bg: "var(--ok-soft)" },
   medium: { label: "medium effort", fg: "var(--warn)", bg: "var(--warn-soft)" },
   high: { label: "high effort", fg: "var(--danger)", bg: "var(--danger-soft)" },
+};
+
+/** Mirrors REFERENCES in @infraviz/schema — a closed set, so nothing can be invented. */
+const REFERENCES: Record<string, { title: string; url: string }> = {
+  "12factor": { title: "The Twelve-Factor App", url: "https://12factor.net" },
+  "aws-well-architected": { title: "AWS Well-Architected", url: "https://aws.amazon.com/architecture/well-architected/" },
+  "google-sre": { title: "Google SRE Book", url: "https://sre.google/books/" },
+  "owasp-top10": { title: "OWASP Top 10", url: "https://owasp.org/www-project-top-ten/" },
+  "owasp-llm-top10": { title: "OWASP Top 10 for LLMs", url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/" },
+  "owasp-asvs": { title: "OWASP ASVS", url: "https://owasp.org/www-project-application-security-verification-standard/" },
+  "cncf-observability": { title: "CNCF Observability Whitepaper", url: "https://github.com/cncf/tag-observability/blob/main/whitepaper.md" },
+  opentelemetry: { title: "OpenTelemetry Spec", url: "https://opentelemetry.io/docs/specs/otel/" },
+  "k8s-production-best-practices": { title: "Kubernetes Config Best Practices", url: "https://kubernetes.io/docs/concepts/configuration/overview/" },
+  "release-it": { title: "Release It! — stability patterns", url: "https://pragprog.com/titles/mnee2/release-it-second-edition/" },
+  ddia: { title: "Designing Data-Intensive Applications", url: "https://dataintensive.net" },
+  "nist-800-53": { title: "NIST SP 800-53", url: "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final" },
+  gdpr: { title: "GDPR", url: "https://gdpr-info.eu" },
+  "postgres-perf": { title: "PostgreSQL Performance Tips", url: "https://www.postgresql.org/docs/current/performance-tips.html" },
+};
+
+const BASIS: Record<string, { label: string; fg: string; bg: string; hint: string }> = {
+  measured: { label: "measured", fg: "var(--ok)", bg: "var(--ok-soft)", hint: "derived from your own code or deployment" },
+  principle: { label: "principle", fg: "var(--accent)", bg: "var(--accent-soft)", hint: "grounded in a named reference" },
+  practice: { label: "judgement", fg: "var(--ink-soft)", bg: "var(--mono-bg)", hint: "engineering judgement, no source claimed" },
 };
 
 const DIM_LABEL: Record<string, string> = {
@@ -124,6 +153,15 @@ export default function OptimiseLens({ data, service }: { data: Optimisations; s
               >
                 {ef.label}
               </span>
+              {it.basis && (
+                <span
+                  className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                  style={{ background: BASIS[it.basis]?.bg, color: BASIS[it.basis]?.fg }}
+                  title={BASIS[it.basis]?.hint}
+                >
+                  {BASIS[it.basis]?.label ?? it.basis}
+                </span>
+              )}
               {it.confidence !== "high" && (
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--mono-bg)] text-[var(--ink-soft)]">
                   {it.confidence} confidence
@@ -157,6 +195,21 @@ export default function OptimiseLens({ data, service }: { data: Optimisations; s
                 </>
               )}
             </dl>
+
+            {it.reference && REFERENCES[it.reference] && (
+              <p className="mt-2.5 text-[11.5px] text-[var(--ink-soft)] leading-relaxed">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--ink-soft)] mr-2">Source</span>
+                <a
+                  href={REFERENCES[it.reference].url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[var(--accent)] hover:underline"
+                >
+                  {REFERENCES[it.reference].title}
+                </a>
+                {it.referenceNote ? ` — ${it.referenceNote}` : ""}
+              </p>
+            )}
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 pt-2.5 border-t border-[var(--line)]">
               <div className="flex flex-wrap gap-1">

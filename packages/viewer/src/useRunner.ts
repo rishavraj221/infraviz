@@ -30,6 +30,7 @@ interface RunnerState {
   loadProviders: () => Promise<void>;
   setEngine: (e: { provider?: string; model?: string; effort?: string | null }) => void;
   run: (kind: RunKind, serviceId?: string) => Promise<void>;
+  runBatch: (batch: { kind: RunKind; serviceId?: string }[], key: string) => Promise<void>;
   dismissError: () => void;
 }
 
@@ -45,6 +46,22 @@ export const useRunner = create<RunnerState>((set, get) => ({
   error: null,
 
   dismissError: () => set({ error: null }),
+
+  runBatch: async (batch, key) => {
+    const { provider, model, effort } = get();
+    set((s) => ({ running: { ...s.running, [key]: true }, log: [], error: null }));
+    try {
+      const r = await fetch("/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batch, provider, model, effort }),
+      });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`);
+    } catch (e) {
+      set({ error: (e as Error).message, running: { ...get().running, [key]: false } });
+    }
+  },
 
   loadProviders: async () => {
     try {
