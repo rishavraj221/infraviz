@@ -21,12 +21,12 @@ import { runAgent } from "./runner.mjs";
 import { detectAll, PROVIDERS } from "./providers.mjs";
 
 export const DIR = ".infraviz";
-const KINDS = ["topology", "sequence", "optimise"];
+const KINDS = ["topology", "sequence", "optimise", "deployment"];
 
 // Consent is recorded per repository, not globally: sensitivity is a property of
 // the codebase, so connecting a new repo asks again. Bump this when the terms
 // materially change, and prior acceptances stop counting.
-export const CONSENT_VERSION = 1;
+export const CONSENT_VERSION = 2;
 
 /**
  * Consent must come from a human, so provenance is part of the record.
@@ -229,6 +229,10 @@ export async function startServer({ root, port, onReady }) {
     }
     if (p === "/api/status") return json(res, 200, await status(root));
     if (p === "/api/providers") return json(res, 200, await detectAll());
+    if (p === "/api/connectors") {
+      const { detectAllConnectors } = await import("./connectors.mjs");
+      return json(res, 200, await detectAllConnectors());
+    }
 
     if (p === "/api/events") {
       res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
@@ -241,8 +245,8 @@ export async function startServer({ root, port, onReady }) {
     // ---- UI-driven generation
     if (p === "/api/run" && req.method === "POST") {
       const { kind, serviceId, provider, model, effort } = await readBody(req);
-      if (!["scan", "topology", "sequence", "optimise"].includes(kind)) {
-        return json(res, 400, { error: "kind must be scan|topology|sequence|optimise" });
+      if (!["scan", "topology", "sequence", "optimise", "deployment"].includes(kind)) {
+        return json(res, 400, { error: "kind must be scan|topology|sequence|optimise|deployment" });
       }
       const consent = await getConsent(root);
       if (!consent.accepted) {
@@ -321,7 +325,9 @@ export async function startServer({ root, port, onReady }) {
           ? spec.topologyPrompt(service)
           : kind === "sequence"
             ? spec.sequencePrompt(service)
-            : spec.optimisePrompt(service);
+            : kind === "deployment"
+              ? spec.deploymentPrompt(service)
+              : spec.optimisePrompt(service);
     }
     // the agent returns JSON to us; we do the writing and verifying
     prompt += `\n\nIMPORTANT: do not write any files. Return the JSON object as your final message.`;

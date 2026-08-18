@@ -249,6 +249,65 @@ export const Optimisations = z.object({
   _meta: z.record(z.string(), z.unknown()).optional(),
 });
 
+// ---------------------------------------------------------------- deployment
+
+/**
+ * Cloud facts cannot be fingerprint-verified the way code can: there is no file
+ * to re-read, and the answer changes underneath you. So provenance here is the
+ * command that produced it plus when — and everything carries an age, because a
+ * cost figure from three weeks ago is a different kind of claim from one taken
+ * this morning.
+ */
+export const Observation = z.object({
+  connector: z.enum(["aws", "openshift", "kubernetes", "manual"]),
+  command: optText.describe("the exact read-only command run, so it can be repeated"),
+  observedAt: z.string().describe("ISO timestamp — the viewer shows how stale this is"),
+});
+
+export const Workload = z
+  .object({
+    name: z.string().min(1),
+    kind: optText.describe("ECS service, Deployment, Lambda, EC2 ASG…"),
+    replicas: z.number().int().nonnegative().optional(),
+    cpu: optText.describe("as provisioned, e.g. '4 vCPU' or 'requests 500m / limits 2'"),
+    memory: optText,
+    utilisation: optText.describe("observed, when metrics were available — otherwise omit"),
+    scaling: optText.describe("autoscaling policy in force, or 'none'"),
+  })
+  .merge(Observation.partial());
+
+export const CostLine = z
+  .object({
+    label: z.string().min(1),
+    amount: z.number().describe("in the currency below"),
+    currency: z.string().default("USD"),
+    period: z.string().describe("e.g. '2026-07-01..2026-07-31' — never a bare month name"),
+    basis: z.enum(["actual", "estimated"]).describe("actual = from a billing API; estimated = derived"),
+  })
+  .merge(Observation.partial());
+
+export const Deployment = z.object({
+  schemaVersion: z.literal(1),
+  platform: z.string().min(1).describe("where this actually runs: ECS Fargate, OpenShift, Lambda…"),
+  summary: z.string().min(1).describe("1-2 sentences on how it is deployed today. Lead with what is surprising."),
+  environment: optText.describe("which environment was inspected — say so, since costs differ wildly"),
+  workloads: z.array(Workload).default([]),
+  cost: z.array(CostLine).default([]),
+  observability: z
+    .object({
+      metrics: optText,
+      logs: optText,
+      alerts: optText,
+      tracing: optText,
+      gaps: z.array(z.string()).default([]).describe("what is missing that would matter in an incident"),
+    })
+    .optional(),
+  /** what the deployment itself should change — distinct from code-level optimisations */
+  recommendations: z.array(Optimisation).default([]),
+  notes: optText.describe("caveats: partial access, one environment only, metrics unavailable…"),
+  _meta: z.record(z.string(), z.unknown()).optional(),
+});
+
 // ---------------------------------------------------------------- sequence
 
 export const SeqRow = z.union([
@@ -313,12 +372,14 @@ export type Sequence = z.infer<typeof Sequence>;
 export type Finding = z.infer<typeof Finding>;
 export type Optimisation = z.infer<typeof Optimisation>;
 export type Optimisations = z.infer<typeof Optimisations>;
+export type Deployment = z.infer<typeof Deployment>;
 
 export const SCHEMAS = {
   project: Project,
   topology: Topology,
   sequence: Sequence,
   optimise: Optimisations,
+  deployment: Deployment,
 } as const;
 export type ArtifactKind = keyof typeof SCHEMAS;
 

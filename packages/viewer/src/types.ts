@@ -145,7 +145,7 @@ export interface VizData {
   project: Project;
   services: Record<
     string,
-    { topology: Topology | null; sequence: Sequence | null; optimise: Optimisations | null }
+    { topology: Topology | null; sequence: Sequence | null; optimise: Optimisations | null; deployment: unknown | null }
   >;
   progress?: Progress | null;
 }

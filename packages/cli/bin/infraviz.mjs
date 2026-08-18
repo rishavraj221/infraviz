@@ -212,6 +212,11 @@ const CONSENT_NOTICE = `Before I analyse this repository:
   have with me; infraviz adds no new recipient. It does mean I will read more
   files than a normal question would: your routers, the modules they import, your
   infrastructure config, and your tests.
+- If you connect a cloud account, I only ever LOOK: read-only commands through
+  your existing aws/oc/kubectl session. I will never ask you for a token or key,
+  and nothing can create, modify, scale or delete. What I read stays in
+  .infraviz/ on your machine — infraviz takes nothing and sends nothing anywhere.
+  The point is only to help you improve your own setup.
 - The output contains verbatim snippets of your code and a ranked list of weak
   points, so treat .infraviz/ as confidential. It is gitignored by default.
 - I may run your test suite to check my conclusions. Tell me not to if your tests
@@ -285,6 +290,44 @@ async function cmdProgress() {
   await appendProgress(cwd, text || "Finished", { reset: flags.has("--start"), done: flags.has("--done") });
 }
 
+async function cmdConnect() {
+  const { detectAllConnectors, runConnector, CONNECTORS } = await import("../src/connectors.mjs");
+
+  if (args[1] === "run") {
+    await requireConsent("cloud connectors");
+    const id = args[2];
+    if (!CONNECTORS[id]) {
+      console.error(`Unknown connector "${id}". One of: ${Object.keys(CONNECTORS).join(", ")}`);
+      process.exit(1);
+    }
+    const r = await runConnector({ connectorId: id, argv: args.slice(3) });
+    if (!r.ok) {
+      console.error(c.red(r.error));
+      process.exit(r.refused ? 3 : 1);
+    }
+    console.log(typeof r.data === "string" ? r.data : JSON.stringify(r.data, null, 2));
+    return;
+  }
+
+  const found = await detectAllConnectors();
+  console.log(`\n${c.bold("Cloud connectors")}  ${c.dim("read-only, using sessions you already have")}\n`);
+  for (const k of found) {
+    const mark = k.authenticated ? c.green("✓") : k.installed ? c.yellow("!") : c.dim("✗");
+    console.log(`  ${mark} ${k.label.padEnd(12)} ${k.authenticated ? c.dim(String(k.identity ?? "")) : ""}`);
+    if (!k.installed) console.log(`      ${c.dim("not installed — " + k.install)}`);
+    else if (!k.authenticated) {
+      console.log(`      ${c.yellow("not logged in.")} Run this yourself: ${c.cyan(k.authHint)}`);
+      if (k.authError) console.log(`      ${c.dim(k.authError)}`);
+    }
+    if (k.contexts?.length) console.log(`      ${c.dim("contexts: " + k.contexts.slice(0, 6).join(", "))}`);
+  }
+  console.log(
+    `\n  ${c.dim("infraviz never asks for or stores credentials. Commands are checked against")}\n` +
+      `  ${c.dim("a read-only allowlist — nothing can create, modify, scale or delete.")}\n`
+  );
+  console.log(`  Inspect with: ${c.cyan("npx infraviz connect run aws ecs describe-services --cluster <name>")}\n`);
+}
+
 async function cmdDoctor() {
   const { detectAll } = await import("../src/providers.mjs");
   const { getConsent } = await import("../src/server.mjs");
@@ -332,9 +375,10 @@ async function cmdSpec() {
   if (which === "topology") return console.log(spec.topologyPrompt({ name: "<service>", router: "<path>" }));
   if (which === "sequence") return console.log(spec.sequencePrompt({ name: "<service>", router: "<path>" }));
   if (which === "optimise") return console.log(spec.optimisePrompt({ name: "<service>", router: "<path>" }));
+  if (which === "deployment") return console.log(spec.deploymentPrompt({ name: "<service>", router: "<path>" }));
   console.log(`infraviz workflow\n\n${spec.WORKFLOW}\n`);
   console.log(
-    `Prompts:\n  npx infraviz spec scan\n  npx infraviz spec topology\n  npx infraviz spec sequence\n  npx infraviz spec optimise\n`
+    `Prompts:\n  npx infraviz spec scan\n  npx infraviz spec topology\n  npx infraviz spec sequence\n  npx infraviz spec optimise\n  npx infraviz spec deployment\n`
   );
   console.log(spec.RULES);
 }
@@ -346,6 +390,7 @@ ${c.bold("infraviz")} — visualise your API's architecture, with every claim ci
   ${c.cyan("npx infraviz view")}        render ${DIR}/ in the browser
   ${c.cyan("npx infraviz status")}      what is generated and what is missing
   ${c.cyan("npx infraviz verify")}      validate schemas and re-check every citation
+  ${c.cyan("npx infraviz connect")}     cloud connectors: what is authenticated (read-only)
   ${c.cyan("npx infraviz progress")}    report a step, so the open viewer shows it live
   ${c.cyan("npx infraviz doctor")}      check environment and detected agent CLIs
   ${c.cyan("npx infraviz consent")}     review and record consent for this repo
@@ -370,6 +415,7 @@ const commands = {
   consent: cmdConsent,
   doctor: cmdDoctor,
   progress: cmdProgress,
+  connect: cmdConnect,
   init: cmdInit,
   spec: cmdSpec,
   help,

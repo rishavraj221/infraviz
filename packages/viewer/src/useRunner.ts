@@ -15,7 +15,7 @@ export interface ProviderInfo {
   defaultEffort: string | null;
 }
 
-export type RunKind = "scan" | "topology" | "sequence" | "optimise";
+export type RunKind = "scan" | "topology" | "sequence" | "optimise" | "deployment";
 
 interface RunnerState {
   providers: ProviderInfo[];

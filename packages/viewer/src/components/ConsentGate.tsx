@@ -76,6 +76,14 @@ export default function ConsentGate({
             AI provider, that restriction applies here unchanged.
           </Point>
 
+          <Point title="Cloud connectors only look, and never hold your keys">
+            If you connect AWS, OpenShift or Kubernetes, infraviz uses the session you have already authenticated —
+            it never asks for a token, never stores a credential, and has no way to keep one. Every command is checked
+            to be read-only first, so nothing can create, modify, scale or delete. What it reads goes into{" "}
+            <code>.infraviz/</code> on your machine and nowhere else. We take nothing; the point is only to help you
+            see and improve your own setup.
+          </Point>
+
           <Point title="The output is confidential">
             Results include short, verbatim snippets of your code and a ranked list of weak points found in it. Treat{" "}
             <code>.infraviz/</code> as at least as sensitive as the source itself. It is added to{" "}

@@ -220,8 +220,90 @@ Rules that make this worth reading:
   empty, because it trains the reader to skim past the real items.
 - Prefer removing work over adding machinery. Deleting a redundant call beats
   adding a cache; adding a cache beats adding a queue.
+- IF .infraviz/services/<id>/deployment.json EXISTS, read it first and ground
+  your numbers in it. Real provisioned sizes, real utilisation and a real bill
+  turn "this looks heavy" into "this runs at 12% CPU on 4 vCPU and costs $412 a
+  month". Say when an item depends on the deployment being what that file says.
 
 Also set "optimise" in the topology's "lenses" array so the viewer shows the tab.`;
+}
+
+export function deploymentPrompt(service: { name: string; router: string }, connector?: string): string {
+  return `Inspect how ONE service is ACTUALLY deployed right now, and what it costs.
+
+SERVICE: ${service.name}
+ROUTER: ${service.router}
+${connector ? `CONNECTOR: ${connector}` : "CONNECTOR: run `npx infraviz connect` to see what is authenticated"}
+
+This is the only artifact based on running infrastructure rather than source. The
+code says what was intended; this says what is true. Where they disagree, that
+disagreement is usually the most valuable thing on the page.
+
+HOW TO LOOK — you decide the commands, not us:
+
+    npx infraviz connect run <connector> <your command>
+
+You know this project and its platform; we do not. Work out what to ask from the
+IaC, the deploy config and what you find as you go. The channel only enforces one
+thing: the action must be read-only. Anything that creates, modifies, scales,
+restarts or deletes is refused, whatever the service. If something you need is
+refused, put it in "notes" rather than reaching around the guard.
+
+NEVER ask the user for credentials, tokens or keys, and never write one to a
+file. The connector uses the session they already have. If nothing is
+authenticated, stop and tell them which command to run themselves.
+
+${RULES}
+
+Write to .infraviz/services/<service-id>/deployment.json:
+{
+  "schemaVersion": 1,
+  "platform": "wherever it actually runs",
+  "environment": "which environment you inspected — costs differ wildly between them",
+  "summary": "1-2 sentences. Lead with what is surprising or wrong.",
+  "workloads": [
+    { "name": "...", "kind": "...", "replicas": 2, "cpu": "as provisioned", "memory": "...",
+      "utilisation": "as observed, if metrics were available", "scaling": "the policy in force, or 'none'",
+      "connector": "aws|openshift|kubernetes", "command": "the exact command you ran",
+      "observedAt": "<ISO timestamp>" }
+  ],
+  "cost": [
+    { "label": "...", "amount": 412.50, "currency": "USD",
+      "period": "2026-07-01..2026-07-31", "basis": "actual",
+      "connector": "aws", "command": "…", "observedAt": "<ISO>" }
+  ],
+  "observability": {
+    "metrics": "what exists", "logs": "…", "alerts": "…", "tracing": "…",
+    "gaps": ["what is missing that would matter at 3am during an incident"]
+  },
+  "recommendations": [ /* same shape as optimise items */ ],
+  "notes": "caveats — partial access, one environment, metrics unavailable"
+}
+
+WHAT MAKES THIS WORTH READING:
+
+- COST MUST BE REAL WHERE IT CAN BE. If the platform has a billing API, use it and
+  mark basis:"actual" with the exact period. Mark "estimated" only when you
+  derived it from sizes and public rates, and say so. Never present an estimate as
+  a bill.
+- COMPARE PROVISIONED AGAINST USED. "4 vCPU provisioned, p95 CPU 12%" is the
+  single most valuable line you can produce, because it converts directly into
+  money. Get utilisation from whatever metrics the platform exposes.
+- RECOMMENDATIONS MUST NAME THE ARCHITECTURE CHANGE, not just the dial. Good:
+  "two always-on tasks serve ~40 requests/minute; on a request-billed runtime the
+  same load costs near zero at idle." Or: "one 16 GiB task exists only because a
+  nightly batch shares the image — split that out and the fleet drops to 2 GiB."
+  Bad: "consider right-sizing."
+- COVER OBSERVABILITY HONESTLY. If there are no alerts, say so and name the two
+  that would have caught the last plausible failure. Do not invent monitoring that
+  is not there.
+- SAY WHAT YOU COULD NOT SEE. Partial permissions, one environment, missing
+  metrics — put it in "notes". An analysis that hides its blind spots is worse
+  than one that admits them.
+
+Record every command you ran in the artifact. A cloud fact cannot be re-checked
+against a file the way a code citation can, so the command and the timestamp ARE
+its provenance — someone must be able to repeat it and get the same answer.`;
 }
 
 export const WORKFLOW = `INCREMENTAL BY DESIGN — do not analyse everything in one pass.
@@ -229,6 +311,7 @@ export const WORKFLOW = `INCREMENTAL BY DESIGN — do not analyse everything in 
 1. Scan            → .infraviz/project.json     then STOP and report
 2. npx infraviz view                            user picks a service
 3. For ONE service → sequence.json, topology.json, optimise.json
+                     (+ deployment.json if a cloud connector is authenticated)
 4. npx infraviz verify                          fix anything reported
 5. Repeat step 3 only for services the user asks for
 
