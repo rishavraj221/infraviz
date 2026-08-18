@@ -150,12 +150,33 @@ export async function status(root) {
  */
 async function verifyOnRead(root, data) {
   const { verifyArtifact } = await import("@infraviz/schema/verify");
+  const { validate } = await import("@infraviz/schema");
+
+  /**
+   * Parse before serving, so schema defaults actually exist.
+   *
+   * The viewer was reading raw JSON straight off disk, which meant every
+   * `.default()` in the schema was a lie from its point of view: an artifact can
+   * legally omit `reliabilityModel`, zod fills it on parse, and the viewer never
+   * parsed — so it received undefined and crashed reading `.groups`. Anything the
+   * schema says has a default has to be materialised here.
+   *
+   * An artifact that fails validation is passed through unchanged rather than
+   * dropped: partial output is still worth rendering, and the failure is already
+   * reported by `infraviz verify`.
+   */
+  const hydrate = (kind, art) => {
+    if (!art) return null;
+    const r = validate(kind, art);
+    return r.ok ? r.data : art;
+  };
+
   const out = { project: null, services: {} };
-  if (data.project) out.project = (await verifyArtifact(root, data.project)).artifact;
+  if (data.project) out.project = (await verifyArtifact(root, hydrate("project", data.project))).artifact;
   for (const [id, arts] of Object.entries(data.services ?? {})) {
     out.services[id] = {};
     for (const [kind, art] of Object.entries(arts)) {
-      out.services[id][kind] = art ? (await verifyArtifact(root, art)).artifact : null;
+      out.services[id][kind] = art ? (await verifyArtifact(root, hydrate(kind, art))).artifact : null;
     }
   }
   return out;

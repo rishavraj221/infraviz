@@ -406,13 +406,16 @@ function ReliabilityMeter({
   units: number;
   onUnitsChange: (n: number) => void;
 }) {
-  const fixed = model.groups.reduce((a, g) => a + g.n, 0);
-  const total = fixed + (model.fanOut ? units : 0);
+  // Belt and braces: the server now hydrates schema defaults, but a viewer that
+  // blanks the entire page because one optional field is missing is a bad trade.
+  const groups = model?.groups ?? [];
+  const fixed = groups.reduce((a, g) => a + g.n, 0);
+  const total = fixed + (model?.fanOut ? units : 0);
   const e2e = Math.pow(value / 100, total) * 100;
   const failRate = 1 - e2e / 100;
   const oneIn = failRate > 0 ? Math.round(1 / failRate) : Infinity;
   const tone = e2e < 90 ? "var(--danger)" : e2e < 99 ? "var(--warn)" : "var(--accent)";
-  const shown = [...model.groups, ...(model.fanOut ? [{ label: model.fanOut.label, n: units }] : [])];
+  const shown = [...groups, ...(model?.fanOut ? [{ label: model.fanOut.label, n: units }] : [])];
 
   if (total === 0) {
     return (
@@ -455,16 +458,16 @@ function ReliabilityMeter({
           />
         </div>
 
-        {model.fanOut && (
+        {model?.fanOut && (
           <div className="flex-1 min-w-[240px]">
             <div className="flex items-baseline justify-between text-[12px] text-[var(--ink-soft)] mb-1">
-              <span>{model.fanOut.unitLabel}</span>
+              <span>{model.fanOut!.unitLabel}</span>
               <span className="font-mono font-bold text-[var(--ink)]">{units.toLocaleString()}</span>
             </div>
             <input
               type="range"
               min={1}
-              max={model.fanOut.maxUnits}
+              max={model.fanOut!.maxUnits}
               step={1}
               value={units}
               onChange={(e) => onUnitsChange(Number(e.target.value))}
