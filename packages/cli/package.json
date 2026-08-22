@@ -1,7 +1,7 @@
 {
   "name": "infraviz",
-  "version": "0.18.1",
-  "description": "Visualise your API's architecture from your codebase — request flow, load, cost and risk, with every claim cited and verified",
+  "version": "0.19.0",
+  "description": "Visualise your API's architecture from your codebase \u2014 request flow, load, cost and risk, with every claim cited and verified",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -23,8 +23,9 @@
     "ai-agent"
   ],
   "dependencies": {
-    "@infraviz/schema": "^0.18.1",
-    "@infraviz/spec": "^0.18.1",
+    "@infraviz/practice": "^0.19.0",
+    "@infraviz/schema": "^0.19.0",
+    "@infraviz/spec": "^0.19.0",
     "cross-spawn": "^7.0.6"
   },
   "repository": {

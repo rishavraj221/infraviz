@@ -1,6 +1,6 @@
 {
   "name": "@infraviz/spec",
-  "version": "0.18.1",
+  "version": "0.19.0",
   "description": "Portable prompts and workflow spec for generating infraviz artifacts with any coding agent",
   "license": "MIT",
   "type": "module",
@@ -27,5 +27,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@infraviz/schema": "^0.19.0"
   }
 }

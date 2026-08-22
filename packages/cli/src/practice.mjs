@@ -14,15 +14,37 @@
 // dropped in is an entry their agent will then cite as house practice.
 
 import { readFile, writeFile, mkdir, readdir, rm } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
 const here = dirname(fileURLToPath(import.meta.url));
+const require_ = createRequire(import.meta.url);
 
-/** The shipped pack, resolved from this package's own location. */
+/**
+ * The shipped pack.
+ *
+ * Resolved as a MODULE, not as a path. `../../practice/pack` happens to be right
+ * in this repo and right again under a flat npm install, and wrong the moment a
+ * version conflict makes npm nest @infraviz/practice under @infraviz/cli — at
+ * which point the directory simply would not exist and the pack would come back
+ * empty with no error at all. A silently empty pack is the worst failure this
+ * code has, because everything downstream treats it as "no house answer" and
+ * carries on.
+ *
+ * realpath matters too: npm workspaces symlink packages into node_modules, so
+ * the resolved path here contains "node_modules" even in a checkout — and
+ * authorTarget() decides who may write by looking for exactly that. Without
+ * resolving the link, maintainers would lose authoring in their own repo.
+ */
 export function officialPackDir() {
-  return resolve(here, "../../practice/pack");
+  try {
+    return join(realpathSync(dirname(require_.resolve("@infraviz/practice/package.json"))), "pack");
+  } catch {
+    // a checkout with no install yet
+    return resolve(here, "../../practice/pack");
+  }
 }
 
 /**
