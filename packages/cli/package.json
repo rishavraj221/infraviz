@@ -10,6 +10,7 @@
   "files": [
     "bin",
     "src",
+    "practice",
     "viewer",
     "README.md",
     "LICENSE"
@@ -23,7 +24,6 @@
     "ai-agent"
   ],
   "dependencies": {
-    "@infraviz/practice": "^0.19.0",
     "@infraviz/schema": "^0.19.0",
     "@infraviz/spec": "^0.19.0",
     "cross-spawn": "^7.0.6"

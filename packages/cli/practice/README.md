@@ -1,4 +1,4 @@
-# @infraviz/practice
+# The practice pack
 
 The practice pack. One JSON file per entry in `pack/`, hand-authored.
 

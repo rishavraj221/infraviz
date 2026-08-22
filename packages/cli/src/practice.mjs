@@ -14,37 +14,26 @@
 // dropped in is an entry their agent will then cite as house practice.
 
 import { readFile, writeFile, mkdir, readdir, rm } from "node:fs/promises";
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const require_ = createRequire(import.meta.url);
 
 /**
- * The shipped pack.
+ * The shipped pack, which lives inside this package rather than beside it.
  *
- * Resolved as a MODULE, not as a path. `../../practice/pack` happens to be right
- * in this repo and right again under a flat npm install, and wrong the moment a
- * version conflict makes npm nest @infraviz/practice under @infraviz/cli — at
- * which point the directory simply would not exist and the pack would come back
- * empty with no error at all. A silently empty pack is the worst failure this
- * code has, because everything downstream treats it as "no house answer" and
- * carries on.
+ * It was briefly its own npm package, and that was the wrong shape: it made the
+ * pack a second thing to publish and version for no benefit, since nothing but
+ * this CLI ever reads it. Folded in, the path is simply relative and cannot be
+ * moved out from under us by an install layout.
  *
- * realpath matters too: npm workspaces symlink packages into node_modules, so
- * the resolved path here contains "node_modules" even in a checkout — and
- * authorTarget() decides who may write by looking for exactly that. Without
- * resolving the link, maintainers would lose authoring in their own repo.
+ * The "node_modules" test in authorTarget() still does the right thing here: in
+ * a checkout this resolves to packages/cli/practice/pack, and in an install to
+ * node_modules/infraviz/practice/pack.
  */
 export function officialPackDir() {
-  try {
-    return join(realpathSync(dirname(require_.resolve("@infraviz/practice/package.json"))), "pack");
-  } catch {
-    // a checkout with no install yet
-    return resolve(here, "../../practice/pack");
-  }
+  return resolve(here, "../practice/pack");
 }
 
 /**
