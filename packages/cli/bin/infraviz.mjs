@@ -84,6 +84,8 @@ async function cmdVerify() {
   for (const [id, a] of Object.entries(data.services)) {
     if (a.topology) report(`services/${id}/topology.json`, validate("topology", a.topology));
     if (a.sequence) report(`services/${id}/sequence.json`, validate("sequence", a.sequence));
+    if (a.ai) report(`services/${id}/ai.json`, validate("ai", a.ai));
+    if (a.bench) report(`services/${id}/bench.json`, validate("bench", a.bench));
     if (a.optimise) report(`services/${id}/optimise.json`, validate("optimise", a.optimise));
   }
 
@@ -107,7 +109,22 @@ async function cmdVerify() {
   for (const [id, a] of Object.entries(data.services)) {
     if (a.topology) await check(`services/${id}`, a.topology);
     if (a.sequence) await check(`services/${id}`, a.sequence);
+    if (a.ai) await check(`services/${id}`, a.ai);
+    if (a.bench) await check(`services/${id}`, a.bench);
     if (a.optimise) await check(`services/${id}`, a.optimise);
+  }
+
+  // Cross-file checks: a bench item is only as good as the two things it points
+  // at, and neither of them is in the file being validated.
+  const { checkBench } = await import("../src/bench.mjs");
+  const crossFile = [];
+  for (const [id, a] of Object.entries(data.services)) {
+    if (a.bench) crossFile.push(...(await checkBench(cwd, id, a.bench, a.ai)));
+  }
+  if (crossFile.length) {
+    problems += crossFile.length;
+    console.log(c.red(`  ✗ recommendations that do not resolve`));
+    for (const m of crossFile) console.log(`      ${m}`);
   }
 
   if (failures.length) {
@@ -153,13 +170,98 @@ async function cmdStatus() {
   console.log(`  ${st.services.length} service(s)\n`);
   const done = st.services.filter((s) => !s.missing.length).length;
   for (const s of st.services) {
-    const marks = ["sequence", "topology", "optimise"]
-      .map((k) => (s.have.includes(k) ? c.green("●") : c.dim("○")))
+    // "·" means the artifact does not apply to this service at all — the AI
+    // section on a service that calls no model. Showing it as an empty circle
+    // reads as work outstanding, which it is not.
+    const marks = ["sequence", "topology", "ai", "bench", "optimise"]
+      .map((k) =>
+        s.have.includes(k) ? c.green("●") : s.missing.includes(k) ? c.dim("○") : c.dim("·")
+      )
       .join(" ");
     console.log(`  ${marks}  ${s.name}${s.missing.length ? c.dim(`  missing: ${s.missing.join(", ")}`) : ""}`);
   }
-  console.log(`\n  ${c.dim("● sequence  ● topology  ● optimise")}`);
+  console.log(`\n  ${c.dim("● sequence  ● topology  ● ai  ● bench  ● optimise")}`);
   console.log(`  ${done}/${st.services.length} fully generated\n`);
+}
+
+// ------------------------------------------------------------------ pack studio
+
+/**
+ * The maintainers' workbench, deliberately a separate process on a separate
+ * port. Clients run `view`; the people who write the pack run this. Keeping them
+ * apart means the viewer has no authoring routes to secure at all.
+ */
+async function cmdPack() {
+  const { startServer } = await import("../src/server.mjs");
+  const { authorTarget } = await import("../src/practice.mjs");
+  const { repoInfo } = await import("../src/git.mjs");
+
+  const target = authorTarget();
+  if (!target.allowed) {
+    console.error(c.red("\nThe pack studio only runs from a checkout of infraviz itself."));
+    console.error(c.dim("  Installed as a dependency the pack is shipped, read-only content.\n"));
+    process.exit(1);
+  }
+
+  const port = Number(flag("port", 4300));
+  const { port: actual } = await startServer({ root: cwd, port, studio: true });
+  const url = `http://127.0.0.1:${actual}`;
+  const info = await repoInfo(cwd);
+
+  console.log(`\n${c.bold("infraviz pack")}  ${c.dim("the practice studio")}`);
+  console.log(`  ${c.cyan(url)}\n`);
+  console.log(`  ${c.dim(`entries  ${target.dir}`)}`);
+  console.log(`  ${c.dim(`commits  ${info.isRepo ? `${info.branch} (on top of ${info.base?.ref} ${info.base?.sha})` : "not a git repository"}`)}`);
+  console.log(
+    c.dim(`  you are on ${info.currentBranch ?? "?"} — committing here does not move it, and never touches your working tree\n`)
+  );
+  if (!args.includes("--no-open")) openBrowser(url);
+}
+
+// ------------------------------------------------------------------ research
+
+async function cmdResearch() {
+  const { loadPack, briefing } = await import("../src/practice.mjs");
+  const pack = await loadPack(cwd);
+
+  // The agent-facing form. Printed to stdout alone so it can be piped into a
+  // prompt without the decoration below getting in the way.
+  if (args.includes("--brief")) return console.log(briefing(pack));
+
+  console.log(`\n${c.bold("practice pack")}  ${c.dim(`${pack.manifest.version} · built ${pack.manifest.builtAt ?? "?"}`)}`);
+  console.log(`  ${c.dim(`writable layer: ${pack.target.layer} → ${pack.target.dir}`)}\n`);
+
+  const showAll = args.includes("--all");
+  const shown = showAll ? pack.entries : pack.entries.filter((e) => e.status === "current");
+
+  if (!shown.length) {
+    console.log(`  ${c.dim("no entries yet")}`);
+    console.log(`  ${c.dim("copy packages/practice/entry.template.json, or add one from")} ${c.cyan("npx infraviz view")}\n`);
+  }
+
+  let topic = null;
+  for (const e of shown) {
+    if (e.topic !== topic) {
+      topic = e.topic;
+      console.log(`  ${c.bold(topic)}`);
+    }
+    const state =
+      e.status === "current" ? c.green("current") : e.status === "draft" ? c.yellow("draft") : c.dim("superseded");
+    const flags = [e.maturity, e.scope, e.layer, e.stale ? c.yellow("unreviewed") : null].filter(Boolean).join(" · ");
+    console.log(`    ${state}  ${e.title}`);
+    console.log(`      ${c.dim(`${e.id}  [${flags}]`)}`);
+  }
+
+  if (pack.problems.length) {
+    console.log(`\n  ${c.red("problems:")}`);
+    for (const p of pack.problems) console.log(`    ${c.red("✗")} ${p}`);
+  }
+
+  const check = args.includes("--check");
+  console.log(
+    `\n  ${pack.problems.length ? c.red(`${pack.problems.length} problem(s)`) : c.green("pack ok")}  ${c.dim(`· ${pack.entries.length} entr${pack.entries.length === 1 ? "y" : "ies"}`)}\n`
+  );
+  if (check && pack.problems.length) process.exit(1);
 }
 
 // ------------------------------------------------------------------ init / spec
@@ -179,6 +281,13 @@ async function cmdInit() {
   // Safe default, applied rather than merely suggested: the artifacts contain
   // source snippets and a ranked list of weak points. Opting in to committing
   // them should be a deliberate act.
+  // Safe default, applied rather than merely suggested: the artifacts contain
+  // source snippets and a ranked list of weak points. Opting in to committing
+  // them should be a deliberate act.
+  //
+  // The whole directory, with no carve-out for the practice overlay. Entries
+  // there are gitignored like everything else — sharing them across a team is a
+  // deliberate act too, not a default this command makes on someone's behalf.
   const gi = join(cwd, ".gitignore");
   let ignored = false;
   try {
@@ -247,6 +356,21 @@ async function cmdConsent() {
     console.log(con.accepted ? c.green(`accepted ${con.at}`) : c.yellow("not accepted"));
     return;
   }
+  // Withdrawing has no interactive-terminal requirement, unlike accepting.
+  // The asymmetry is the point: the check exists so nobody is opted IN without a
+  // person doing it, and closing a gate that was open needs no such protection.
+  if (args.includes("--revoke")) {
+    const f = join(cwd, D, "consent.json");
+    if (!existsSync(f)) {
+      console.log(c.dim(`\nNothing recorded for ${cwd} — the gate is already closed.\n`));
+      return;
+    }
+    await writeFile(f, JSON.stringify({ version: CONSENT_VERSION, accepted: false, revokedAt: new Date().toISOString(), root: cwd }, null, 2) + "\n");
+    console.log(`${c.green("✓")} withdrawn for ${c.dim(cwd)}`);
+    console.log(c.dim("  An open viewer returns to the notice on its next poll. Generated artifacts are left alone.\n"));
+    return;
+  }
+
   console.log(`\n${CONSENT_NOTICE}\n`);
 
   // No non-interactive path, deliberately. An agent running this in a pipe gets
@@ -374,11 +498,13 @@ async function cmdSpec() {
   if (which === "scan") return console.log(spec.scanPrompt());
   if (which === "topology") return console.log(spec.topologyPrompt({ name: "<service>", router: "<path>" }));
   if (which === "sequence") return console.log(spec.sequencePrompt({ name: "<service>", router: "<path>" }));
+  if (which === "ai") return console.log(spec.aiPrompt({ name: "<service>", router: "<path>" }));
+  if (which === "bench") return console.log(spec.benchPrompt({ name: "<service>", router: "<path>" }));
   if (which === "optimise") return console.log(spec.optimisePrompt({ name: "<service>", router: "<path>" }));
   if (which === "deployment") return console.log(spec.deploymentPrompt({ name: "<service>", router: "<path>" }));
   console.log(`infraviz workflow\n\n${spec.WORKFLOW}\n`);
   console.log(
-    `Prompts:\n  npx infraviz spec scan\n  npx infraviz spec topology\n  npx infraviz spec sequence\n  npx infraviz spec optimise\n  npx infraviz spec deployment\n`
+    `Prompts:\n  npx infraviz spec scan\n  npx infraviz spec topology\n  npx infraviz spec sequence\n  npx infraviz spec ai\n  npx infraviz spec bench\n  npx infraviz spec optimise\n  npx infraviz spec deployment\n`
   );
   console.log(spec.RULES);
 }
@@ -395,12 +521,19 @@ ${c.bold("infraviz")} — visualise your API's architecture, with every claim ci
   ${c.cyan("npx infraviz doctor")}      check environment and detected agent CLIs
   ${c.cyan("npx infraviz consent")}     review and record consent for this repo
   ${c.cyan("npx infraviz spec")}        print the workflow and prompts (needs consent)
+  ${c.cyan("npx infraviz research")}    the practice pack: what is current, and what is stale
+  ${c.cyan("npx infraviz pack")}        the practice studio — maintainers only, separate port
   ${c.cyan("npx infraviz init")}        create ${DIR}/
 
 Options
   --port <n>    view: port to serve on (default 4173)
   --no-open     view: don't open a browser
   --strict      verify: exit non-zero on any problem (use in CI)
+  --status      consent: print whether this repo is accepted
+  --revoke      consent: withdraw it, so the notice is shown again
+  --brief       research: print the pack as an agent briefing
+  --all         research: include superseded and draft entries
+  --check       research: exit non-zero if the pack has problems
 
 Artifacts live in ${DIR}/ inside your repo. They contain source snippets and
 security findings — gitignore by default, and see the Security section of the
@@ -418,6 +551,8 @@ const commands = {
   connect: cmdConnect,
   init: cmdInit,
   spec: cmdSpec,
+  research: cmdResearch,
+  pack: cmdPack,
   help,
   "--help": help,
   "-h": help,

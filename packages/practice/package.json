@@ -1,0 +1,8 @@
+{
+  "name": "@infraviz/practice",
+  "version": "0.18.1",
+  "description": "The practice pack — hand-authored techniques and principles the agent cites from.",
+  "type": "module",
+  "files": ["pack", "pack.json", "entry.template.json", "README.md"],
+  "license": "MIT"
+}

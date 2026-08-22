@@ -1,5 +1,6 @@
 import { useVizStore } from "../store/useVizStore";
 import { useEffect, useState } from "react";
+import { DEMO } from "../demo";
 import { useRunner, type RunKind } from "../useRunner";
 import ReadinessPanel from "./ReadinessPanel";
 import { computeReadiness, overallVerdict } from "../readiness";
@@ -100,7 +101,7 @@ export default function OverallView({ data }: { data: VizData }) {
           kinds.filter((k) => !data.services[s.id]?.[k]).map((k) => ({ kind: k as RunKind, serviceId: s.id }))
         );
         const canRun = providers.some((p) => p.installed);
-        if (!pending.length) return null;
+        if (!pending.length || DEMO) return null;
         return (
           <div className="rounded-lg border border-dashed border-[var(--line)] p-4">
             <p className="text-[12.5px] text-[var(--ink-soft)] leading-relaxed mb-3">

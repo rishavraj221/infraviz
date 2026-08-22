@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ServiceDef } from "../types";
 import { useRunner, type RunKind } from "../useRunner";
 import { promptForService, type Kind } from "../prompts";
+import EnginePicker from "./EnginePicker";
 
 /**
  * The bridge between this page and your agent.
@@ -23,6 +24,16 @@ const KINDS = [
     blurb: "Node graph plus security, compliance and reliability findings.",
   },
   {
+    kind: "ai" as const,
+    label: "AI pipelines",
+    blurb: "How models are actually used, stage by stage — and where the cost multiplies.",
+  },
+  {
+    kind: "bench" as const,
+    label: "What our practice is worth",
+    blurb: "Joins the AI pipelines to the practice pack: what each change costs today, and to adopt.",
+  },
+  {
     kind: "optimise" as const,
     label: "Optimisations",
     blurb: "Ranked improvements you can hand straight to your agent to implement.",
@@ -39,7 +50,7 @@ export default function RequestPanel({
   has,
 }: {
   service: ServiceDef;
-  has: { topology: boolean; sequence: boolean; optimise: boolean; deployment: boolean };
+  has: { topology: boolean; sequence: boolean; ai: boolean; bench: boolean; optimise: boolean; deployment: boolean };
 }) {
   const [copied, setCopied] = useState<string | null>(null);
   const providers = useRunner((s) => s.providers);
@@ -55,7 +66,12 @@ export default function RequestPanel({
 
   const canRunHere = providers.some((p) => p.installed);
   const runBatch = useRunner((s) => s.runBatch);
-  const missing = KINDS.filter((k) => !has[k.kind]);
+  // The AI section is offered only where it applies. A button to describe the
+  // model pipelines of a service that calls no model is an invitation to invent
+  // one, and abstention is supposed to be the easy path here.
+  const usesModels = Boolean(service.deps?.llm || service.deps?.vector);
+  const applicable = KINDS.filter((k) => (k.kind !== "ai" && k.kind !== "bench") || usesModels);
+  const missing = applicable.filter((k) => !has[k.kind]);
 
   async function copy(kind: string, text?: string) {
     try {
@@ -106,6 +122,12 @@ export default function RequestPanel({
         </div>
       )}
 
+      {canRunHere && (
+        <div className="mb-3">
+          <EnginePicker compact />
+        </div>
+      )}
+
       {error && (
         <div className="rounded-lg bg-[var(--danger-soft)] text-[var(--danger)] p-3 text-[12px] mb-3">{error}</div>
       )}
@@ -144,9 +166,13 @@ export default function RequestPanel({
       </div>
 
       {log.length > 0 && (
-        <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 max-h-[160px] overflow-y-auto">
-          {log.map((l, i) => (
-            <div key={i} className="text-[11px] font-mono text-[var(--ink-soft)] leading-relaxed">
+        <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] max-h-[160px] overflow-y-auto flex flex-col-reverse divide-y divide-[var(--line)]">
+          {[...log].reverse().map((l, i) => (
+            <div
+              key={log.length - i}
+              className="min-w-0 px-3 py-1.5 text-[11px] font-mono text-[var(--ink-soft)] leading-relaxed truncate"
+              title={l}
+            >
               {l}
             </div>
           ))}

@@ -7,8 +7,10 @@
 
 import { z } from "zod";
 import { PROFILE_IDS, CHECK_IDS } from "./profiles.js";
+import { PracticeEntry } from "./practice.js";
 
 export * from "./profiles.js";
+export * from "./practice.js";
 
 /**
  * Optional text field that tolerates an explicit `null`.
@@ -332,6 +334,139 @@ export const Optimisations = z.object({
   _meta: z.record(z.string(), z.unknown()).optional(),
 });
 
+// ---------------------------------------------------------------- ai
+
+/**
+ * The AI section: the pipelines a model-using system actually runs.
+ *
+ * Deliberately thin. A chatbot over RAG, an agentic system with tools and a
+ * nightly classification job share almost no structure, so anything rich enough
+ * to model one of them properly distorts the other two and turns every new
+ * architecture into a schema change. The shape here is only what the viewer must
+ * draw and the verifier must check; everything that varies between systems lives
+ * in prose the agent writes after reading the code.
+ *
+ * Two fields carry the value, and both are annotations rather than structure:
+ *
+ *   repeats      — a stage run once per sub-question in a system that decomposes
+ *                  into five is where cost actually accumulates, and it is
+ *                  invisible in a topology diagram.
+ *   opportunity  — something worth changing, said at the stage it applies to
+ *                  rather than in a list somewhere else on the page.
+ */
+export const AiStageKind = z.enum([
+  "guard",
+  "classify",
+  "decompose",
+  "embed",
+  "retrieve",
+  "rerank",
+  "generate",
+  "tool",
+  "chunk",
+  "index",
+  "store",
+  "other",
+]);
+
+export const AiStage = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1).max(80),
+    kind: AiStageKind,
+    model: optText.describe("the actual model id where one is called — never a guess"),
+    detail: z.string().min(1).describe("what happens here and why it matters, in plain language"),
+    calls: optText.describe(
+      "how often this runs per unit of work, in words: 'once', 'once per sub-question — 3 to 8'"
+    ),
+    repeats: z
+      .boolean()
+      .default(false)
+      .describe("true when this runs more than once per unit of work — the viewer marks it"),
+    opportunity: optText.describe(
+      "something worth changing HERE, specific to this stage. Omit rather than pad."
+    ),
+    stepId: optText.describe("matching sequence/topology step id, so the views cross-highlight"),
+    reads: z
+      .array(z.string())
+      .default([])
+      .describe(
+        "pipeline ids whose output THIS stage consumes — the retrieval stage reading the index that ingestion built. Names the seam between two pipelines instead of leaving the diagram to guess it."
+      ),
+  })
+  .merge(Evidence.partial());
+
+export const AiPipeline = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  when: z
+    .enum(["request", "offline", "scheduled", "event"])
+    .describe("request = someone is waiting on it; offline = nobody is"),
+  summary: z.string().min(1).describe("one sentence. Lead with the surprising part."),
+  unitOfWork: optText.describe("what one run of this pipeline processes: 'one user question', 'one document'"),
+  dependsOn: z
+    .array(z.string())
+    .default([])
+    .describe("pipeline ids this one consumes the output of — e.g. a query pipeline reading an index"),
+  stages: z.array(AiStage).min(1),
+});
+
+export const Ai = z
+  .object({
+    schemaVersion: z.literal(1),
+    summary: z.string().min(1).describe("1-2 sentences on how this system uses models. Lead with the surprising part."),
+    pipelines: z.array(AiPipeline).min(1),
+    volumeNote: z
+      .string()
+      .min(1)
+      .describe(
+        "REQUIRED. How much traffic these pipelines take. Say plainly that it is not measured rather than implying a number exists."
+      ),
+    evals: z
+      .object({
+        present: z.boolean(),
+        note: z.string().min(1).describe("what exists, or plainly that nothing exercises model output"),
+      })
+      .merge(Evidence.partial())
+      .optional(),
+    note: optText.describe("use this to say the model usage is already appropriate, rather than inventing concerns"),
+    _meta: z.record(z.string(), z.unknown()).optional(),
+  })
+  .superRefine((a, ctx) => {
+    const pipelineIds = new Set(a.pipelines.map((p) => p.id));
+    const seenStage = new Set<string>();
+    a.pipelines.forEach((p, i) => {
+      p.dependsOn.forEach((d) => {
+        if (!pipelineIds.has(d)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["pipelines", i, "dependsOn"],
+            message: `pipelines[${i}] depends on "${d}" which is not a declared pipeline. Declared: ${[...pipelineIds].join(", ")}`,
+          });
+        }
+      });
+      p.stages.forEach((st, j) => {
+        st.reads.forEach((r) => {
+          if (!pipelineIds.has(r)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["pipelines", i, "stages", j, "reads"],
+              message: `stage "${st.id}" reads "${r}" which is not a declared pipeline. Declared: ${[...pipelineIds].join(", ")}`,
+            });
+          }
+        });
+        if (seenStage.has(st.id)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["pipelines", i, "stages", j, "id"],
+            message: `stage id "${st.id}" is used twice — ids must be unique across all pipelines`,
+          });
+        }
+        seenStage.add(st.id);
+      });
+    });
+  });
+
 // ---------------------------------------------------------------- deployment
 
 /**
@@ -388,6 +523,118 @@ export const Deployment = z.object({
   /** what the deployment itself should change — distinct from code-level optimisations */
   recommendations: z.array(Optimisation).default([]),
   notes: optText.describe("caveats: partial access, one environment only, metrics unavailable…"),
+  _meta: z.record(z.string(), z.unknown()).optional(),
+});
+
+// ---------------------------------------------------------------- bench
+
+/**
+ * bench.json — what a pack entry would be worth to THIS service.
+ *
+ * The join between two things that are individually inert: `ai.json` says this
+ * system embeds each sub-question in a loop; the pack says here is our answer
+ * for batching. Neither is a recommendation on its own. This is where they meet,
+ * and it is the last honest step before anything is measured.
+ *
+ * THREE THINGS KEEP IT FROM BECOMING A WISHLIST:
+ *
+ * 1. Both ends must exist. `stageId` has to name a stage in the service's own
+ *    ai.json and `techniqueId` a CURRENT entry in the pack. Those are checked
+ *    across files by `verify`, so "you recommended something we do not ship" and
+ *    "you recommended it for a stage that does not exist" are mechanical
+ *    failures rather than things a reader has to notice.
+ *
+ * 2. Three numbers, not two. What it costs today, what changes after, and what
+ *    ADOPTING it costs. A 20% improvement behind a config flag and the same 20%
+ *    behind a re-index of 400M chunks are different recommendations, and a
+ *    report showing only the first two is quietly dishonest.
+ *
+ * 3. No number without its assumptions. There is no price table in this repo, so
+ *    any figure in money is the agent's own arithmetic and has to be legible as
+ *    such. Units of work are the honest default: calls and tokens are read off
+ *    the code, they do not expire, and a reader can multiply.
+ */
+export const BenchUnit = z.enum([
+  "calls-per-request",
+  "calls-per-month",
+  "tokens-per-request",
+  "tokens-per-month",
+  "seconds-per-request",
+  "usd-per-month",
+  "qualitative",
+]);
+
+export const BenchBasis = z
+  .enum(["structural", "estimated", "measured"])
+  .describe(
+    "structural = counted from the code, true regardless of traffic. estimated = arithmetic on an assumption. measured = from a real run."
+  );
+
+export const BenchItem = z
+  .object({
+    id: z.string().min(1),
+    stageId: z.string().min(1).describe("a stage id from this service's ai.json — checked across files"),
+    techniqueId: z.string().min(1).describe("a CURRENT entry id from the practice pack — checked across files"),
+
+    applies: z
+      .string()
+      .min(1)
+      .describe("why the entry's 'applies when' is true OF THIS CODE, naming what you saw. Not a restatement of it."),
+
+    today: z.object({
+      value: z.string().min(1).describe("what it costs now, with the number in it"),
+      unit: BenchUnit,
+      basis: BenchBasis,
+    }),
+    after: z.string().min(1).describe("what it becomes, in the same unit, so the two compare"),
+    migration: z
+      .string()
+      .min(1)
+      .describe("what adopting costs — engineer time, re-indexing, dual-running. Never omitted for being small."),
+    qualityRisk: z
+      .string()
+      .min(1)
+      .describe("what could get worse. 'Nothing — output is unchanged by construction' is valid and common."),
+
+    evidenceNeeded: optText.describe(
+      "the comparison that would have to be run before shipping. Required when the cited entry can change output."
+    ),
+    assumptions: z
+      .array(z.string())
+      .default([])
+      .describe("REQUIRED for anything estimated. If the figure is money, name the price used and where it came from."),
+
+    confidence: z.enum(["high", "medium", "low"]),
+  })
+  .merge(Evidence.partial())
+  .superRefine((it, ctx) => {
+    if (it.today.basis === "estimated" && !it.assumptions.length) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["assumptions"],
+        message:
+          'an estimated figure must state what it assumed — otherwise the number cannot be checked or argued with',
+      });
+    }
+    if (it.today.unit === "usd-per-month" && it.today.basis === "structural") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["today", "basis"],
+        message:
+          'money is never "structural": converting calls to currency requires a price, which is an assumption. Use "estimated" and name the price, or report the figure in calls or tokens.',
+      });
+    }
+  });
+
+export const Bench = z.object({
+  schemaVersion: z.literal(1),
+  packVersion: z
+    .string()
+    .min(1)
+    .describe("the pack this was computed against — a bench result outlives the pack that produced it"),
+  summary: z.string().min(1).describe("1-2 sentences. Lead with the largest honest number."),
+  items: z.array(BenchItem).default([]),
+  note: optText.describe("use this to say nothing in the pack applies here, rather than reaching for the nearest entry"),
   _meta: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -456,6 +703,11 @@ export type Finding = z.infer<typeof Finding>;
 export type Optimisation = z.infer<typeof Optimisation>;
 export type Optimisations = z.infer<typeof Optimisations>;
 export type Deployment = z.infer<typeof Deployment>;
+export type Ai = z.infer<typeof Ai>;
+export type Bench = z.infer<typeof Bench>;
+export type BenchItem = z.infer<typeof BenchItem>;
+export type AiPipeline = z.infer<typeof AiPipeline>;
+export type AiStage = z.infer<typeof AiStage>;
 
 export const SCHEMAS = {
   project: Project,
@@ -463,6 +715,9 @@ export const SCHEMAS = {
   sequence: Sequence,
   optimise: Optimisations,
   deployment: Deployment,
+  ai: Ai,
+  bench: Bench,
+  "practice-entry": PracticeEntry,
 } as const;
 export type ArtifactKind = keyof typeof SCHEMAS;
 

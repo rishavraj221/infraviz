@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Answerable, Level } from "../readiness";
+import { DEMO } from "../demo";
 import { useRunner, type RunKind } from "../useRunner";
 
 const TONE: Record<Level, { fg: string; bg: string; label: string }> = {
@@ -93,7 +94,7 @@ export default function ReadinessPanel({
 
                 {/* the gap and the way to close it, in the same place — otherwise
                     a new user is told what is missing with no idea how to get it */}
-                {it.missing.length > 0 && (
+                {it.missing.length > 0 && !DEMO && (
                   <span className="flex items-center gap-1.5 ml-auto shrink-0">
                     {canRunHere && (
                       <button

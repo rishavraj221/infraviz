@@ -3,6 +3,10 @@ import { create } from "zustand";
 export type Tab = "flow" | "load" | "ratelimit" | "cost" | "security" | "compliance" | "reliability" | "optimise" | "deployment";
 
 interface VizState {
+  /** the repository analysis, or the practice pack — two different subjects */
+  activeView: "repo" | "research";
+  setActiveView: (v: "repo" | "research") => void;
+
   activeService: string;
   setActiveService: (s: string) => void;
 
@@ -24,8 +28,12 @@ interface VizState {
 }
 
 export const useVizStore = create<VizState>((set) => ({
+  activeView: "repo",
+  setActiveView: (v) => set({ activeView: v }),
+
   activeService: "overall",
-  setActiveService: (s) => set({ activeService: s, selectedFinding: null, selectedStep: null, activeTab: "flow" }),
+  setActiveService: (s) =>
+    set({ activeService: s, activeView: "repo", selectedFinding: null, selectedStep: null, activeTab: "flow" }),
 
   activeTab: "flow",
   setActiveTab: (t) => set({ activeTab: t, selectedFinding: null }),

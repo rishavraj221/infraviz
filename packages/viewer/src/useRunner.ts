@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { DEMO } from "./demo";
 
 export interface ProviderInfo {
   id: string;
@@ -15,7 +16,7 @@ export interface ProviderInfo {
   defaultEffort: string | null;
 }
 
-export type RunKind = "scan" | "topology" | "sequence" | "optimise" | "deployment";
+export type RunKind = "scan" | "topology" | "sequence" | "ai" | "bench" | "optimise" | "deployment";
 
 interface RunnerState {
   providers: ProviderInfo[];
@@ -64,6 +65,9 @@ export const useRunner = create<RunnerState>((set, get) => ({
   },
 
   loadProviders: async () => {
+    // Nothing in demo mode can start a run, and there is no server to ask —
+    // without this the embedded viewer fires a 404 on every mount.
+    if (DEMO) return;
     try {
       const providers: ProviderInfo[] = await fetch("/api/providers").then((r) => r.json());
       const first = providers.find((p) => p.installed);

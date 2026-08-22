@@ -183,6 +183,132 @@ export interface Deployment {
   _meta?: Record<string, unknown>;
 }
 
+export type AiStageKind =
+  | "guard"
+  | "classify"
+  | "decompose"
+  | "embed"
+  | "retrieve"
+  | "rerank"
+  | "generate"
+  | "tool"
+  | "chunk"
+  | "index"
+  | "store"
+  | "other";
+
+export interface AiStage {
+  id: string;
+  name: string;
+  kind: AiStageKind;
+  model?: string;
+  detail: string;
+  calls?: string;
+  repeats?: boolean;
+  opportunity?: string;
+  stepId?: string;
+  reads?: string[];
+  file?: string;
+  line?: number;
+  fingerprint?: string;
+  verification?: Verification;
+  verificationNote?: string;
+}
+
+export interface AiPipeline {
+  id: string;
+  name: string;
+  when: "request" | "offline" | "scheduled" | "event";
+  summary: string;
+  unitOfWork?: string;
+  dependsOn?: string[];
+  stages: AiStage[];
+}
+
+export interface Ai {
+  schemaVersion: 1;
+  summary: string;
+  pipelines: AiPipeline[];
+  volumeNote: string;
+  evals?: { present: boolean; note: string; file?: string; line?: number; fingerprint?: string };
+  note?: string;
+  _meta?: Record<string, unknown>;
+}
+
+export type BenchUnit =
+  | "calls-per-request"
+  | "calls-per-month"
+  | "tokens-per-request"
+  | "tokens-per-month"
+  | "seconds-per-request"
+  | "usd-per-month"
+  | "qualitative";
+
+export interface BenchItem {
+  id: string;
+  stageId: string;
+  techniqueId: string;
+  applies: string;
+  today: { value: string; unit: BenchUnit; basis: "structural" | "estimated" | "measured" };
+  after: string;
+  migration: string;
+  qualityRisk: string;
+  evidenceNeeded?: string;
+  assumptions?: string[];
+  confidence: "high" | "medium" | "low";
+  file?: string;
+  line?: number;
+  fingerprint?: string;
+  verification?: Verification;
+  verificationNote?: string;
+}
+
+export interface Bench {
+  schemaVersion: 1;
+  packVersion: string;
+  summary: string;
+  items?: BenchItem[];
+  note?: string;
+}
+
+export type PracticeTopic = string;
+
+export interface PracticeEntry {
+  id: string;
+  kind: "technique" | "principle";
+  topic: PracticeTopic;
+  title: string;
+  status: "current" | "superseded" | "draft";
+  supersedes?: string;
+  maturity: "ga" | "field-proven" | "beta" | "emerging";
+  scope: "knob" | "architecture";
+  evalSensitivity: "none" | "low" | "high";
+  source: { title: string; url: string; kind: "paper" | "provider-docs" | "book" | "write-up" | "standard" };
+  firstSeen: string;
+  reviewedAt: string;
+  author: string;
+  appliesWhen: string;
+  doesNotApplyWhen: string;
+  claim: string;
+  adoptionCost: string;
+  learned: string;
+  detect: string;
+  note?: string;
+  /** added on read, not stored */
+  layer: "official" | "local";
+  stale: boolean;
+}
+
+export interface Pack {
+  manifest: { version: string; builtAt?: string | null };
+  entries: PracticeEntry[];
+  problems: string[];
+  /** false for anyone running infraviz as a dependency — the pack is shipped content */
+  canAuthor: boolean;
+  target: { layer: "official" | "local"; dir?: string; reason?: string };
+  overlay: boolean;
+}
+
 export interface Progress {
   startedAt?: string;
   updatedAt?: string;
@@ -196,7 +322,14 @@ export interface VizData {
   project: Project;
   services: Record<
     string,
-    { topology: Topology | null; sequence: Sequence | null; optimise: Optimisations | null; deployment: Deployment | null }
+    {
+      topology: Topology | null;
+      sequence: Sequence | null;
+      ai: Ai | null;
+      bench: Bench | null;
+      optimise: Optimisations | null;
+      deployment: Deployment | null;
+    }
   >;
   progress?: Progress | null;
 }

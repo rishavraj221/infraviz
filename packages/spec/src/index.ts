@@ -197,6 +197,199 @@ Write to .infraviz/services/<service-id>/sequence.json:
   when the return is uninteresting.`;
 }
 
+
+export const PRACTICE = `THE PRACTICE PACK — run this before you recommend anything:
+
+    npx infraviz research --brief
+
+It prints the answers this team has researched, implemented and settled on: at
+most one per topic. Two rules govern it, and both matter more than being
+comprehensive:
+
+- Apply an entry only when its "applies when" is TRUE OF THIS CODEBASE, judged by
+  reading the code. Most entries do not apply to most services, and saying so is
+  the correct result.
+- Cite nothing that is not in the pack. If a topic has no entry, there is no
+  house answer — assess the system on its own terms rather than reaching for
+  whatever you happen to know. An invented technique with a plausible name is
+  exactly as damaging as an invented file citation, and harder to catch.
+
+An empty pack is a normal state. It means recommend nothing from it.`;
+
+export function aiPrompt(service: { name: string; router: string }, profiles: string[] = []): string {
+  return `Describe how ONE service uses models, as pipelines.
+
+SERVICE: ${service.name}
+ROUTER: ${service.router}
+${checklistFor(profiles.includes("llm") ? profiles : [...profiles, "llm"])}
+
+${PRACTICE}
+
+The topology and sequence views already show what talks to what and in what
+order. This one exists because that view stops exactly where the interesting part
+of an AI system starts. Your job is to draw the pipelines in more detail than the
+topology does, because that is where the money and the answer quality live.
+
+MOST SYSTEMS HAVE MORE THAN ONE PIPELINE, and they are worth separating because
+they fail differently. A retrieval chatbot usually has two:
+
+  - an INGESTION pipeline that runs offline — documents in, split, embedded,
+    written to a store. Nobody is waiting on it, and it is where the cost of
+    ever changing the retrieval design is hiding.
+  - a QUERY pipeline that runs per request — perhaps a small model deciding
+    whether the question is in scope, splitting a complex question up, embedding,
+    retrieving, then a larger model writing the answer.
+
+An agentic system has different stages. A batch classifier has three. Do not force
+this system into a shape it does not have — a pipeline is just an ordered list of
+stages, and the list is whatever you actually find in the code.
+
+WHAT MAKES THIS VIEW WORTH DRAWING — get these two right and the rest is detail:
+
+  REPETITION. A stage that runs once per sub-question, in a system that splits
+  one question into five, costs five times what the diagram suggests. Set
+  "repeats": true and say the real count in "calls". This never appears in a
+  topology diagram and it is usually the largest single fact about the system.
+
+  OPPORTUNITY. Something worth changing, written AT the stage it applies to. A
+  small model answering a narrow question over and over is a different
+  observation from a frontier model writing prose, and the reader needs it next
+  to the stage, not in a list further down the page. Leave it out where you have
+  nothing specific — an empty opportunity on most stages is the correct result.
+
+${RULES}
+
+Write to .infraviz/services/<service-id>/ai.json:
+{
+  "schemaVersion": 1,
+  "summary": "1-2 sentences on how this system uses models. Lead with the surprising part.",
+  "volumeNote": "REQUIRED. How much traffic these pipelines take — or say plainly it is not measured.",
+  "pipelines": [
+    { "id": "ingest", "name": "Ingestion", "when": "offline",
+      "unitOfWork": "one uploaded document",
+      "summary": "One sentence.",
+      "dependsOn": [],
+      "stages": [
+        { "id": "chunk", "name": "Split into chunks", "kind": "chunk",
+          "detail": "What happens and why it matters.",
+          "calls": "once per document",
+          "file": "app/ingest.py", "fingerprint": "RecursiveCharacterTextSplitter" }
+      ] },
+    { "id": "query", "name": "Answering a question", "when": "request",
+      "unitOfWork": "one user question",
+      "dependsOn": ["ingest"],
+      "summary": "One sentence.",
+      "stages": [
+        { "id": "embed-sub", "name": "Embed each sub-question", "kind": "embed",
+          "model": "text-embedding-3-small",
+          "detail": "...", "calls": "once per sub-question — 3 to 8",
+          "repeats": true,
+          "opportunity": "Something specific to THIS stage, or omit the field.",
+          "stepId": "matching sequence step id, when one exists",
+          "reads": ["ingest"],
+          "file": "app/rag.py", "fingerprint": "embeddings.create(" }
+      ] }
+  ],
+  "evals": { "present": false, "note": "What exists, or plainly that nothing exercises model output." },
+  "note": "Optional. Use it to say the model usage is already appropriate for the job."
+}
+
+Stage kinds: guard, classify, decompose, embed, retrieve, rerank, generate, tool,
+chunk, index, store, other.
+
+- Order stages the way they actually run.
+- "model" only where a model is genuinely called, and only the real id from the
+  code. Never fill it in from what you would expect the model to be.
+- "when": "request" means someone is waiting on it; "offline" means nobody is.
+  Getting this wrong makes every later cost and latency claim wrong.
+- Stage ids must be unique across ALL pipelines, and both "dependsOn" and a
+  stage's "reads" must name declared pipelines. All three are validated.
+- Put "reads" on the specific stage that consumes another pipeline's output —
+  the retrieval stage reading the index ingestion built. The diagram draws that
+  seam, and without it the two pipelines look unrelated.
+- Reuse sequence/topology step ids in "stepId" wherever the same step exists in
+  both, so the views cross-highlight.
+
+FOLLOW THE IMPORTS. Retrieval and prompt construction are almost never in the
+router. A description written from the router alone will miss the fan-out, which
+is the one thing this artifact exists to show.
+
+If the service calls a model once and does nothing else interesting, say so in
+one pipeline with two stages and set "note". A short honest answer is correct
+output; an invented pipeline is not.`;
+}
+
+export function benchPrompt(service: { name: string; router: string }): string {
+  return `Work out what the practice pack is worth to ONE service.
+
+SERVICE: ${service.name}
+ROUTER: ${service.router}
+
+This is a JOIN, not a survey. Two inputs, both of which you must actually read:
+
+    .infraviz/services/<service-id>/ai.json   the pipelines and their stages
+    npx infraviz research --brief             the house answers, one per topic
+
+An item is only legitimate when BOTH ends resolve: a stage that exists in that
+ai.json, and a current entry that exists in that pack. Both are checked across
+files by \`npx infraviz verify\`, so inventing either is caught — but the reason
+not to invent them is that a plausible-sounding technique is the most damaging
+thing you can produce here. It reads exactly like a real one.
+
+IF THE PACK IS EMPTY, WRITE NO ITEMS. Set "note" to say so. Reaching for a
+technique you happen to know is precisely the failure this pack exists to
+prevent, and an empty result is the correct output.
+
+${RULES}
+
+THREE NUMBERS, NOT TWO. The one people leave out is what adopting it costs:
+
+  today       what it costs now, WITH THE NUMBER, counted from the code
+  after       what it becomes, in the same unit so the two compare
+  migration   engineer time, re-indexing, dual-running during cutover
+
+A 20% improvement behind a config flag and the same 20% behind re-indexing 400M
+chunks are different recommendations. Reporting only the first two makes them
+look identical, and that is the difference the reader is actually deciding on.
+
+UNITS: prefer calls and tokens. They are read straight off the code, they do not
+expire, and the reader can multiply. Use "usd-per-month" only if you genuinely
+know a current price — and then name that price and where you got it in
+"assumptions", because there is no price table in this repo and the arithmetic
+is yours. A dollar figure with an unstated price is worse than no figure.
+
+Write to .infraviz/services/<service-id>/bench.json:
+{
+  "schemaVersion": 1,
+  "packVersion": "the version npx infraviz research printed",
+  "summary": "1-2 sentences. Lead with the largest honest number.",
+  "items": [
+    { "id": "batch-subquestion-embeddings",
+      "stageId": "embed-sub",
+      "techniqueId": "an id from the pack",
+      "applies": "Why the entry's 'applies when' is TRUE OF THIS CODE — name what you saw. Not a restatement of the entry.",
+      "today":  { "value": "3 to 8 sequential calls per question", "unit": "calls-per-request", "basis": "structural" },
+      "after":  "one call per question",
+      "migration": "One function, no data migration. An afternoon.",
+      "qualityRisk": "Nothing — the embeddings are identical either way.",
+      "evidenceNeeded": "required when the cited entry can change model output",
+      "assumptions": [],
+      "confidence": "high",
+      "file": "app/rag.py", "fingerprint": "for q in subquestions" }
+  ],
+  "note": "Use this to say nothing in the pack applies here."
+}
+
+- "basis": "structural" when you counted it in the code and it holds whatever the
+  traffic is. "estimated" when you multiplied by something you assumed — and then
+  "assumptions" must say what. Money is never structural.
+- "qualityRisk": for a technique that cannot change output, say so plainly. That
+  is the most valuable thing you can tell a reader, and it is often true.
+- Order items best-first by gain per unit of migration cost.
+- Do not write an item for every stage. Most stages have no applicable entry, and
+  a short list of real ones is worth more than a complete-looking one.`;
+}
+
 export function optimisePrompt(service: { name: string; router: string }, profiles: string[] = []): string {
   return `Identify concrete optimisations for ONE service.
 
@@ -204,6 +397,8 @@ SERVICE: ${service.name}
 ROUTER: ${service.router}
 
 ${checklistFor(profiles)}
+
+${PRACTICE}
 
 This is the most useful artifact in the set, and the easiest to fill with
 platitudes. The bar: a senior engineer reads an item and immediately knows
@@ -356,8 +551,10 @@ export const WORKFLOW = `INCREMENTAL BY DESIGN — do not analyse everything in 
 1. Scan            → .infraviz/project.json     then STOP and report
 2. npx infraviz view                            user picks a service
 3. For ONE service → sequence.json, topology.json, optimise.json
+                     (+ ai.json if the service calls models)
                      (+ deployment.json if a cloud connector is authenticated)
 4. npx infraviz verify                          fix anything reported
+   npx infraviz research --brief                the house answers, before you recommend
 5. Repeat step 3 only for services the user asks for
 
 Step 1 is cheap and gives the whole map. Steps 3 onward are expensive and only

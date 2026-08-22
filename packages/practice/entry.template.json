@@ -1,0 +1,30 @@
+{
+  "id": "kebab-case-id",
+  "kind": "technique",
+  "topic": "caching",
+  "title": "What it is, in a phrase a reader can scan",
+
+  "status": "draft",
+  "supersedes": null,
+
+  "maturity": "field-proven",
+  "scope": "knob",
+  "evalSensitivity": "none",
+
+  "source": {
+    "title": "The paper or documentation this comes from",
+    "url": "https://example.com/the-actual-page",
+    "kind": "paper"
+  },
+
+  "firstSeen": "2026-08-22",
+  "reviewedAt": "2026-08-22",
+  "author": "your name",
+
+  "appliesWhen": "The conditions that make this worth doing. This field does the work — an agent decides applicability from it.",
+  "doesNotApplyWhen": "When to leave it alone. Usually more useful than the field above.",
+  "claim": "What improves, and roughly by how much.",
+  "adoptionCost": "Honestly, including the parts that are not code: re-indexing, dual-running, review time.",
+  "learned": "What you found implementing it — the precondition that turned out to matter, the failure mode you hit. This is the half a model cannot supply.",
+  "detect": "How to tell whether a codebase already does this."
+}

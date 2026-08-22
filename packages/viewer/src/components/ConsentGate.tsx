@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useVizStore } from "../store/useVizStore";
 
 /**
  * Nothing touches the codebase until this is acknowledged, and the server
@@ -19,6 +20,7 @@ export default function ConsentGate({
   reason?: string;
   onAccept: () => void;
 }) {
+  const setActiveView = useVizStore((st) => st.setActiveView);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,6 +116,15 @@ export default function ConsentGate({
           >
             Read the details
           </a>
+          {/* The pack is what the agent would BRING to this repository, not
+              anything read out of it — so it is fair to look at before deciding,
+              and seeing it is a reasonable input to that decision. */}
+          <button
+            onClick={() => setActiveView("research")}
+            className="px-4 py-2.5 rounded-lg text-[13px] font-semibold border border-[var(--line)] text-[var(--ink-soft)] hover:text-[var(--ink)] cursor-pointer"
+          >
+            See what it would apply
+          </button>
         </div>
 
         <p className="text-[11px] text-[var(--ink-soft)] mt-4 leading-relaxed">

@@ -16,6 +16,7 @@ import { useVizStore, type Tab } from "../store/useVizStore";
 import type { Topology, Finding, Optimisations, Deployment, ServiceDef } from "../types";
 import OptimiseLens from "./OptimiseLens";
 import DeploymentLens from "./DeploymentLens";
+import ErrorBoundary from "./ErrorBoundary";
 
 const nodeTypes = { service: ServiceNode };
 const edgeTypes = { floating: FloatingEdge };
@@ -231,13 +232,17 @@ export default function DiagramCard({
 
       {activeTab === "optimise" && optimise && (
         <div className="mt-4 pt-4 border-t border-[var(--line)]">
-          <OptimiseLens data={optimise} service={service} />
+          <ErrorBoundary label="The optimise tab">
+            <OptimiseLens data={optimise} service={service} />
+          </ErrorBoundary>
         </div>
       )}
 
       {activeTab === "deployment" && deployment && (
         <div className="mt-4 pt-4 border-t border-[var(--line)]">
-          <DeploymentLens data={deployment} service={service} />
+          <ErrorBoundary label="The deployment tab">
+            <DeploymentLens data={deployment} service={service} />
+          </ErrorBoundary>
         </div>
       )}
 

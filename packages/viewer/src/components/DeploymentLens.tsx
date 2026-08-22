@@ -1,5 +1,6 @@
 import type { Deployment, Observation, ServiceDef } from "../types";
 import OptimiseLens from "./OptimiseLens";
+import ErrorBoundary from "./ErrorBoundary";
 
 /**
  * What is actually running, and what it actually costs.
@@ -163,7 +164,9 @@ export default function DeploymentLens({ data, service }: { data: Deployment; se
       {recs.length > 0 && (
         <section>
           <h3 className="text-[12.5px] font-bold mb-2">What the deployment should change</h3>
-          <OptimiseLens data={{ schemaVersion: 1, items: recs }} service={service} />
+          <ErrorBoundary label="The deployment recommendations">
+            <OptimiseLens data={{ schemaVersion: 1, items: recs }} service={service} />
+          </ErrorBoundary>
         </section>
       )}
 

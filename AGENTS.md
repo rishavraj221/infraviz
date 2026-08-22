@@ -130,10 +130,14 @@ way to tell working from hung.
 ### Getting the exact prompts
 
 ```bash
+npx infraviz research        # the house answers, and which are stale
+npx infraviz research --brief  # the same, formatted for a prompt
+
 npx infraviz spec            # workflow + evidence rules
 npx infraviz spec scan       # the scan prompt
 npx infraviz spec topology   # the topology prompt
 npx infraviz spec sequence   # the sequence prompt
+npx infraviz spec ai         # the AI pipelines prompt
 ```
 
 These print the authoritative schema. Prefer them over paraphrasing this file.
@@ -173,6 +177,15 @@ infrastructure (Terraform, CDK, CloudFormation, compose, k8s). Write
 }
 ```
 
+**Before you recommend anything, read the pack.** `npx infraviz research --brief`
+prints what this team has researched, implemented and settled on — at most one
+answer per topic. Apply an entry only when its "applies when" is true of the code
+in front of you, and cite nothing that is not in the pack. If a topic has no
+entry there is no house answer, so assess the system on its own terms rather than
+reaching for whatever you happen to know. An empty pack is a normal state and
+means recommend nothing from it. An invented technique with a plausible name is
+exactly as damaging as an invented file citation, and much harder to catch.
+
 **Tier is depth of treatment, and should vary:**
 
 | Tier | Meaning |
@@ -191,13 +204,26 @@ Write `sequence.json` first (it forces you to understand the real order of
 operations), then `topology.json` reusing the same step ids so the two diagrams
 cross-highlight.
 
-There are three artifacts per service:
+There are four artifacts per service, and the fourth only applies to some:
 
 | Artifact | What it answers |
 |---|---|
 | `sequence.json` | What actually happens, in order |
 | `topology.json` | Who talks to whom, plus security/compliance/reliability findings |
 | `optimise.json` | What to improve, what it costs today, what you gain |
+| `ai.json` | How the service uses models — only when it calls one |
+
+`ai.json` is for services that call models, and only those. It draws the
+pipelines — a retrieval system usually has two, an offline ingestion one and a
+per-request query one — in more detail than the topology view, because that view
+stops exactly where the interesting part of an AI system starts. Two things carry
+it: `repeats` on a stage that runs more than once per unit of work (a stage run
+once per sub-question in a system that splits a question into five costs five
+times what the diagram implies, and no topology diagram shows that), and
+`opportunity`, written at the stage it applies to rather than collected into a
+list. Get its shape from `npx infraviz spec ai`. Do not force a system into a
+shape it does not have — a pipeline is whatever ordered list of stages the code
+actually runs.
 
 `optimise.json` is usually the one people act on. Get its shape from `npx
 infraviz spec optimise`. The two fields that carry its value are `costsToday`

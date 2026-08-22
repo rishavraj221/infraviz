@@ -21,7 +21,7 @@ import { runAgent } from "./runner.mjs";
 import { detectAll, PROVIDERS } from "./providers.mjs";
 
 export const DIR = ".infraviz";
-const KINDS = ["topology", "sequence", "optimise", "deployment"];
+const KINDS = ["topology", "sequence", "ai", "bench", "optimise", "deployment"];
 
 // Consent is recorded per repository, not globally: sensitivity is a property of
 // the codebase, so connecting a new repo asks again. Bump this when the terms
@@ -114,6 +114,12 @@ export async function loadAll(root) {
   return { project, services };
 }
 
+/** Whether the AI section applies at all — see the note in status(). */
+export function usesModels(service) {
+  const d = service?.deps ?? {};
+  return Boolean(d.llm || d.vector);
+}
+
 /** What's done and what's missing — the resume point for humans and agents alike. */
 export async function status(root) {
   const { project, services } = await loadAll(root);
@@ -127,13 +133,17 @@ export async function status(root) {
     generatedAt: project.generatedAt ?? null,
     services: (project.services ?? []).map((s) => {
       const a = services[s.id] ?? {};
+      // The AI section only applies to services that actually call a model.
+      // Listing it as "missing" on a plain CRUD endpoint invents work: an agent
+      // resuming from status would dutifully go and write one.
+      const applicable = KINDS.filter((k) => (k !== "ai" && k !== "bench") || usesModels(s));
       return {
         id: s.id,
         name: s.name,
         tier: s.tier,
         severity: s.severity,
-        have: KINDS.filter((k) => a[k]),
-        missing: KINDS.filter((k) => !a[k]),
+        have: applicable.filter((k) => a[k]),
+        missing: applicable.filter((k) => !a[k]),
       };
     }),
   };
@@ -182,7 +192,7 @@ async function verifyOnRead(root, data) {
   return out;
 }
 
-export async function startServer({ root, port, onReady }) {
+export async function startServer({ root, port, onReady, studio = false }) {
   const jobs = new Map();
   const sse = new Set();
 
@@ -248,6 +258,57 @@ export async function startServer({ root, port, onReady }) {
       }
       return json(res, 200, await getConsent(root));
     }
+    // The practice pack. Reading it is outside the consent gate: the pack is
+    // what an agent would BRING to a repository, holds none of its code, and
+    // opening it starts no analysis.
+    //
+    // Writing is not available here at all. It lives on the studio server
+    // (`infraviz pack`), which is a separate process on a separate port that a
+    // client never starts — so on this server the routes do not exist rather
+    // than existing and refusing.
+    if (p === "/api/practice") {
+      const { loadPack, writeEntry, deleteEntry } = await import("./practice.mjs");
+      if (req.method === "POST" || req.method === "DELETE") {
+        if (!studio) {
+          return json(res, 405, {
+            errors: ["the practice pack is read-only on the viewer — authoring runs on the studio server"],
+          });
+        }
+        const r =
+          req.method === "POST"
+            ? await writeEntry(root, await readBody(req))
+            : await deleteEntry(root, url.searchParams.get("id") ?? "");
+        if (!r.ok) return json(res, r.forbidden ? 403 : req.method === "POST" ? 400 : 404, { errors: r.errors });
+        broadcast({ type: "practice-changed" });
+        return json(res, 200, r);
+      }
+      return json(res, 200, { ...(await loadPack(root)), studio });
+    }
+
+    // Git, studio only. Nothing about the viewer needs it.
+    //
+    // The namespace is closed off explicitly rather than left to fall through:
+    // an unmatched /api path lands on the SPA handler and answers 200 with HTML,
+    // which reads like the route exists and works.
+    if (p.startsWith("/api/pack/") && !studio) {
+      return json(res, 404, { errors: ["the pack studio is not running on this server"] });
+    }
+
+    if (p === "/api/pack/git" && studio) {
+      const { packStatus } = await import("./git.mjs");
+      const { officialPackDir } = await import("./practice.mjs");
+      return json(res, 200, await packStatus(root, officialPackDir()));
+    }
+
+    if (p === "/api/pack/commit" && studio && req.method === "POST") {
+      const { commitPack } = await import("./git.mjs");
+      const { officialPackDir } = await import("./practice.mjs");
+      const r = await commitPack(root, officialPackDir(), await readBody(req));
+      if (!r.ok) return json(res, 400, { errors: r.errors });
+      broadcast({ type: "practice-changed" });
+      return json(res, 200, r);
+    }
+
     if (p === "/api/status") return json(res, 200, await status(root));
     if (p === "/api/providers") return json(res, 200, await detectAll());
     if (p === "/api/connectors") {
@@ -269,8 +330,8 @@ export async function startServer({ root, port, onReady }) {
       const { serviceId, provider, model, effort } = body;
       req.batch = body.batch;
       const kind = body.kind ?? body.batch?.[0]?.kind;
-      if (!req.batch && !["scan", "topology", "sequence", "optimise", "deployment"].includes(kind)) {
-        return json(res, 400, { error: "kind must be scan|topology|sequence|optimise|deployment" });
+      if (!req.batch && !["scan", "topology", "sequence", "ai", "bench", "optimise", "deployment"].includes(kind)) {
+        return json(res, 400, { error: "kind must be scan|topology|sequence|ai|bench|optimise|deployment" });
       }
       const consent = await getConsent(root);
       if (!consent.accepted) {
@@ -321,6 +382,15 @@ export async function startServer({ root, port, onReady }) {
     // Resolve then compare with relative(), rather than a startsWith() prefix
     // check: on Windows a decoded backslash in the URL can traverse out of the
     // asset directory in ways a string prefix test does not catch.
+    // The studio is the same bundle in a different mode, not a second frontend.
+    // One flag on the page decides whether it renders the repository analysis or
+    // the pack workbench, so there is nothing to keep in sync between two apps.
+    if (studio && (p === "/" || p === "/index.html")) {
+      const html = await readFile(join(viewerDist, "index.html"), "utf8");
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      return res.end(html.replace("<head>", '<head>\n<script>window.__INFRAVIZ_STUDIO__=true;</script>'));
+    }
+
     let file = resolve(viewerDist, "." + decodeURIComponent(p === "/" ? "/index.html" : p));
     const rel = relative(viewerDist, file);
     if (rel.startsWith("..") || isAbsolute(rel) || !existsSync(file)) file = join(viewerDist, "index.html");
@@ -369,7 +439,11 @@ export async function startServer({ root, port, onReady }) {
             ? spec.sequencePrompt(service)
             : kind === "deployment"
               ? spec.deploymentPrompt(service)
-              : spec.optimisePrompt(service, profiles);
+              : kind === "ai"
+                ? spec.aiPrompt(service, profiles)
+                : kind === "bench"
+                  ? spec.benchPrompt(service)
+                  : spec.optimisePrompt(service, profiles);
     }
     // the agent returns JSON to us; we do the writing and verifying
     prompt += `\n\nIMPORTANT: do not write any files. Return the JSON object as your final message.`;

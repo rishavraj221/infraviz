@@ -11,6 +11,8 @@ const GROUPS: { tier: Tier; label: string }[] = [
 export default function Sidebar({ data }: { data: VizData }) {
   const activeService = useVizStore((s) => s.activeService);
   const setActiveService = useVizStore((s) => s.setActiveService);
+  const activeView = useVizStore((s) => s.activeView);
+  const setActiveView = useVizStore((s) => s.setActiveView);
   const services = data.project.services ?? [];
 
   return (
@@ -28,7 +30,7 @@ export default function Sidebar({ data }: { data: VizData }) {
         <button
           onClick={() => setActiveService("overall")}
           className={`w-full text-left px-2.5 py-2 rounded-md text-[13px] font-semibold cursor-pointer ${
-            activeService === "overall" || !services.some((s) => s.id === activeService)
+            activeView === "repo" && (activeService === "overall" || !services.some((s) => s.id === activeService))
               ? "bg-[var(--accent-soft)] text-[var(--accent)]"
               : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
           }`}
@@ -68,6 +70,25 @@ export default function Sidebar({ data }: { data: VizData }) {
             </div>
           );
         })}
+
+        {/* The pack is a different subject from this repository — it is what the
+            agent brings TO the repository — so it sits apart rather than in the
+            service list. */}
+        <div className="mt-5 pt-4 border-t border-[var(--line)]">
+          <button
+            onClick={() => setActiveView("research")}
+            className={`w-full text-left px-2.5 py-2 rounded-md text-[13px] font-semibold cursor-pointer ${
+              activeView === "research"
+                ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
+            }`}
+          >
+            Practice
+          </button>
+          <p className="px-2.5 mt-1 text-[10px] font-mono text-[var(--ink-soft)] opacity-60 leading-relaxed">
+            what we apply, and why
+          </p>
+        </div>
 
         <p className="mt-6 px-2.5 text-[10px] font-mono text-[var(--ink-soft)] opacity-60 leading-relaxed">
           ◆ has generated diagrams. Depth is tiered on purpose — a thin router doesn't need five lenses.

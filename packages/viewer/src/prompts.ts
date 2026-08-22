@@ -8,12 +8,14 @@ import type { VizData, ServiceDef } from "./types";
  * times for one service. One paste should be able to cover a whole service, or
  * the whole project.
  */
-const ORDER = ["sequence", "topology", "optimise", "deployment"] as const;
+const ORDER = ["sequence", "topology", "ai", "bench", "optimise", "deployment"] as const;
 export type Kind = (typeof ORDER)[number];
 
 const LABEL: Record<Kind, string> = {
   sequence: "sequence.json",
   topology: "topology.json",
+  ai: "ai.json",
+  bench: "bench.json",
   optimise: "optimise.json",
   deployment: "deployment.json",
 };

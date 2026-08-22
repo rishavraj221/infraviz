@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useRunner } from "../useRunner";
+import { useVizStore } from "../store/useVizStore";
 import ProgressPanel from "./ProgressPanel";
+import EnginePicker from "./EnginePicker";
 import type { Progress } from "../types";
 
 const IDE_PROMPT = `Scan this repository with infraviz.
@@ -23,8 +25,8 @@ export default function StartScreen({ emptyScan = false, progress }: { emptyScan
   const log = useRunner((s) => s.log);
   const error = useRunner((s) => s.error);
   const provider = useRunner((s) => s.provider);
-  const setEngine = useRunner((s) => s.setEngine);
   const [copied, setCopied] = useState(false);
+  const setActiveView = useVizStore((s) => s.setActiveView);
 
   useEffect(() => {
     loadProviders();
@@ -97,22 +99,7 @@ export default function StartScreen({ emptyScan = false, progress }: { emptyScan
               </div>
             )}
 
-            {installed.length > 1 && (
-              <select
-                value={provider ?? ""}
-                onChange={(e) => {
-                  const p = providers.find((x) => x.id === e.target.value);
-                  setEngine({ provider: e.target.value, model: p?.defaultModel, effort: p?.defaultEffort ?? null });
-                }}
-                className="w-full text-[12px] font-mono px-2 py-1.5 rounded-md border border-[var(--line)] bg-[var(--bg)] mb-2 cursor-pointer"
-              >
-                {installed.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            )}
+            {Boolean(installed.length) && <EnginePicker />}
 
             <button
               disabled={!installed.length || busy}
@@ -122,9 +109,7 @@ export default function StartScreen({ emptyScan = false, progress }: { emptyScan
               {busy ? "Scanning…" : emptyScan ? "Scan again" : "Scan codebase"}
             </button>
             {active && installed.length === 1 && (
-              <p className="text-[10.5px] font-mono text-[var(--ink-soft)] mt-1.5 text-center">
-                {active.label} · {active.defaultModel}
-              </p>
+              <p className="text-[10.5px] font-mono text-[var(--ink-soft)] mt-1.5 text-center">{active.label}</p>
             )}
           </div>
 
@@ -157,11 +142,11 @@ export default function StartScreen({ emptyScan = false, progress }: { emptyScan
               </span>
               <span className="ml-auto text-[10px] font-mono text-[var(--ink-soft)]">{log.length} events</span>
             </div>
-            <div className="p-3 max-h-[220px] overflow-y-auto flex flex-col-reverse">
+            <div className="max-h-[220px] overflow-y-auto flex flex-col-reverse divide-y divide-[var(--line)]">
               {[...log].reverse().map((l, i) => (
                 <div
                   key={log.length - i}
-                  className="text-[11px] font-mono text-[var(--ink-soft)] leading-relaxed truncate"
+                  className="min-w-0 px-3 py-1.5 text-[11px] font-mono text-[var(--ink-soft)] leading-relaxed truncate"
                   title={l}
                 >
                   {l}
@@ -171,7 +156,22 @@ export default function StartScreen({ emptyScan = false, progress }: { emptyScan
           </div>
         )}
 
+        {/* The only route to the pack before a scan exists. The sidebar that
+            normally carries this link is not rendered until there are services,
+            which made the page unreachable on exactly the repositories where
+            someone would want to read it first. */}
         <p className="mt-8 text-[11.5px] text-[var(--ink-soft)] leading-relaxed">
+          Before any of that, you can read{" "}
+          <button
+            onClick={() => setActiveView("research")}
+            className="text-[var(--accent)] font-semibold hover:underline cursor-pointer"
+          >
+            the practice pack
+          </button>{" "}
+          — the answers this team applies, and the only ones an agent here is allowed to cite.
+        </p>
+
+        <p className="mt-3 text-[11.5px] text-[var(--ink-soft)] leading-relaxed">
           Either path writes to <code>.infraviz/</code>, so you can switch between them freely — run the scan here and
           the diagrams in your IDE, or the reverse. <code>npx infraviz status</code> shows what is done and what is
           missing, which is how an agent resumes from wherever you left off.

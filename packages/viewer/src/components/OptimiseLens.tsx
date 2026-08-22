@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DEMO } from "../demo";
 import type { Optimisations, Optimisation, ServiceDef } from "../types";
 
 /**
@@ -132,18 +133,27 @@ export default function OptimiseLens({ data, service }: { data: Optimisations; s
         <p className="text-[12px] text-[var(--ink-soft)] flex-1 min-w-[260px]">
           Ordered best-first by gain per unit of effort. Stop reading whenever the effort stops being worth the gain.
         </p>
+        {!DEMO && (
         <button
           onClick={() => copy("all", allTasks(items, service))}
           className="text-[12px] font-semibold px-3 py-1.5 rounded-md bg-[var(--accent)] text-[var(--surface)] cursor-pointer whitespace-nowrap"
         >
           {copied === "all" ? "Copied ✓" : `Copy all ${items.length} as tasks`}
         </button>
+        )}
       </div>
 
       {items.map((it: Optimisation, i: number) => {
+        // Not just typed-optional defensiveness: this schema is enforced by zod on
+        // write, but the server intentionally serves an artifact through even when
+        // it fails validation (partial output beats nothing) — so a malformed item
+        // reaching here is a real, expected case, not a hypothetical one. Every
+        // field below degrades to blank text if missing; only the ones a bare
+        // `.map`/`.join` would throw on need an explicit fallback.
+        const dims = it.dimension ?? [];
         const ef = EFFORT[it.effort] ?? EFFORT.medium;
         return (
-          <div key={it.id} className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
+          <div key={it.id ?? i} className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
             <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1.5 mb-3">
               <span className="font-mono text-[11px] text-[var(--ink-soft)] tabular-nums">{i + 1}</span>
               <h3 className="font-bold text-[14px] flex-1 min-w-[240px]">{it.title}</h3>
@@ -213,7 +223,7 @@ export default function OptimiseLens({ data, service }: { data: Optimisations; s
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 pt-2.5 border-t border-[var(--line)]">
               <div className="flex flex-wrap gap-1">
-                {it.dimension.map((d) => (
+                {dims.map((d) => (
                   <span
                     key={d}
                     className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--accent-soft)] text-[var(--accent)]"
@@ -222,6 +232,7 @@ export default function OptimiseLens({ data, service }: { data: Optimisations; s
                   </span>
                 ))}
               </div>
+              {!DEMO && (
               <button
                 onClick={() => copy(it.id, taskFor(it, service))}
                 className="text-[11px] font-semibold px-2 py-1 rounded-md border border-[var(--line)] text-[var(--ink-soft)] hover:border-[var(--accent)] hover:text-[var(--accent)] cursor-pointer"
@@ -229,6 +240,7 @@ export default function OptimiseLens({ data, service }: { data: Optimisations; s
               >
                 {copied === it.id ? "Copied ✓" : "Copy as task"}
               </button>
+              )}
 
               {it.file && (
                 <span className="text-[10.5px] font-mono text-[var(--ink-soft)] ml-auto">

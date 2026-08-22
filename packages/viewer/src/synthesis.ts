@@ -53,7 +53,10 @@ export interface Synthesis {
  */
 function groupKey(p: { file?: string; fingerprint?: string; title: string }) {
   if (p.file && p.fingerprint) return `fp:${p.file}::${p.fingerprint}`;
-  return `title:${p.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()}`;
+  // title is required by both source schemas, but an artifact that failed
+  // validation is still served rather than dropped (see server.mjs), so a
+  // missing title here is a real case, not a hypothetical one.
+  return `title:${(p.title ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()}`;
 }
 
 function scoreOf(p: Omit<Priority, "score">): number {
